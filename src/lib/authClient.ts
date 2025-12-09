@@ -8,7 +8,7 @@ export const signUpWithEmail = async (email: string, password: string) => {
     email,
     password,
     options: {
-      emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+      emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=/verified` : undefined,
     },
   });
   return { data, error };
