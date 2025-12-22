@@ -910,7 +910,7 @@ export function OnboardingWizard({
                         selected={active}
                       >
                         <div
-                          className={`flex items-center gap-4 rounded-2xl border px-5 py-4 text-left transition shadow-inner ${active ? "border-cyan-200/70 bg-white/10 ring-1 ring-cyan-300/60 shadow-[0_0_30px_rgba(56,189,248,0.25)]" : "border-white/10 bg-white/5"}`}
+                          className={`flex items-center gap-4 rounded-2xl border px-5 py-4 text-left transition shadow-inner border-white/10 bg-white/5`}
                         >
                           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
                             {role.icon}

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { CardHeader } from "@/components/ui/CardHeader";
+import { LogoBadge } from "@/components/ui/LogoBadge";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { CheckCircle2 } from "lucide-react";
 import { BRAND_EMAIL } from "@/lib/constants";
@@ -31,16 +31,21 @@ export default function VerifiedPage() {
                             }}
                         />
 
-                        <div className="flex justify-center mb-6">
-                            <div className="h-20 w-20 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-                                <CheckCircle2 className="h-10 w-10 text-green-400" />
+                        <div className="flex items-center justify-center gap-4 mb-6 text-left">
+                            <LogoBadge size="md" className="flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                                        E-Mail-Adresse erfolgreich bestätigt
+                                    </h1>
+                                    <CheckCircle2 className="hidden md:block h-8 w-8 text-green-400 flex-shrink-0" />
+                                </div>
+                                <div className="md:hidden mt-2 flex items-center gap-2 text-green-400">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                    <span className="text-sm font-medium">Bestätigt</span>
+                                </div>
                             </div>
                         </div>
-
-                        <CardHeader
-                            title="E-Mail-Adresse erfolgreich bestätigt"
-                            spacing="compact"
-                        />
 
                         <p className="mt-4 text-base text-slate-300 leading-relaxed max-w-sm mx-auto">
                             Du kannst dieses Fenster schließen und zur App zurückkehren, um fortzufahren.

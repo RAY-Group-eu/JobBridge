@@ -1,17 +1,18 @@
 import type { Session } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "./supabaseServer";
-import { Profile, isProfileComplete } from "./types";
+import { Profile, isProfileComplete, UserType, SystemRoleType } from "./types";
 
 export type AuthState =
   | { state: "no-session" }
-  | { state: "email-unconfirmed"; session: Session; profile: Profile | null }
-  | { state: "incomplete-profile"; session: Session; profile: Profile | null }
-  | { state: "ready"; session: Session; profile: Profile | null };
+  | { state: "email-unconfirmed"; session: Session; profile: Profile | null; systemRoles: string[] }
+  | { state: "incomplete-profile"; session: Session; profile: Profile | null; systemRoles: string[] }
+  | { state: "ready"; session: Session; profile: Profile | null; systemRoles: string[] };
 
 export const getCurrentSessionAndProfile = async (): Promise<{
   session: Session | null;
   profile: Profile | null;
+  systemRoles: string[];
 }> => {
   const supabase = await supabaseServer();
   const {
@@ -19,44 +20,68 @@ export const getCurrentSessionAndProfile = async (): Promise<{
   } = await supabase.auth.getSession();
 
   if (!session?.user?.id) {
-    return { session: null, profile: null };
+    return { session: null, profile: null, systemRoles: [] };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", session.user.id)
-    .maybeSingle();
+  // Parallel fetch for profile and roles
+  const [profileResult, rolesResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .maybeSingle(),
+    supabase
+      .from("user_system_roles")
+      .select("role:system_roles(name)")
+      .eq("user_id", session.user.id)
+  ]);
 
-  return { session, profile: (profile as Profile | null) ?? null };
+  const profile = profileResult.data as Profile | null;
+  // rolesResult.data format: [{ role: { name: "admin" } }, ...]
+  const systemRoles = rolesResult.data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? (rolesResult.data as any[]).map((r) => r.role?.name).filter(Boolean)
+    : [];
+
+  return { session, profile: profile ?? null, systemRoles };
+};
+
+// Helpers
+export const isAccountType = (profile: Profile | null, type: UserType) => {
+  return profile?.user_type === type;
+};
+
+export const hasSystemRole = (userRoles: string[], role: SystemRoleType) => {
+  return userRoles.includes(role);
 };
 
 // Klare Zustände, kein Redirect
 export async function getAuthState(): Promise<AuthState> {
-  const { session, profile } = await getCurrentSessionAndProfile();
+  const { session, profile, systemRoles } = await getCurrentSessionAndProfile();
 
   if (!session) {
     return { state: "no-session" } as const;
   }
 
   const confirmedAt = (session.user as { confirmed_at?: string } | null | undefined)?.confirmed_at;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isEmailConfirmed = Boolean((session.user as any)?.email_confirmed_at || confirmedAt);
 
   if (!isEmailConfirmed) {
-    return { state: "email-unconfirmed", session, profile } as const;
+    return { state: "email-unconfirmed", session, profile, systemRoles } as const;
   }
 
   if (!isProfileComplete(profile)) {
-    return { state: "incomplete-profile", session, profile } as const;
+    return { state: "incomplete-profile", session, profile, systemRoles } as const;
   }
 
-  return { state: "ready", session, profile } as const;
+  return { state: "ready", session, profile, systemRoles } as const;
 }
 
 export const requireSession = async () => {
   const state = await getAuthState();
   if (state.state === "no-session" || state.state === "email-unconfirmed") redirect("/");
-  return { session: state.session!, profile: state.profile ?? null };
+  return { session: state.session!, profile: state.profile ?? null, systemRoles: state.systemRoles };
 };
 
 export const requireCompleteProfile = async () => {
@@ -64,7 +89,7 @@ export const requireCompleteProfile = async () => {
   if (state.state === "no-session" || state.state === "email-unconfirmed")
     redirect("/");
   if (state.state === "incomplete-profile") redirect("/onboarding");
-  return { session: state.session!, profile: state.profile! };
+  return { session: state.session!, profile: state.profile!, systemRoles: state.systemRoles };
 };
 
 export const redirectIfAuthenticated = async () => {
