@@ -23,6 +23,7 @@ export function AdminSidebar() {
         { icon: FileText, label: "Jobs", href: "/admin/jobs" }, // Assuming needed
         { icon: Flag, label: "Moderation", href: "/admin/moderation" },
         { icon: Shield, label: "Roles", href: "/admin/roles" },
+        { icon: LayoutDashboard, label: "Demo Mode", href: "/admin/demo" },
     ];
 
     return (

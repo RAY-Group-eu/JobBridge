@@ -40,7 +40,7 @@ export function NotificationsPopover() {
         <div className="relative">
             <button
                 onClick={() => setOpen(!open)}
-                className="relative w-10 h-10 flex items-center justify-center bg-white/10 dark:bg-black/20 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-full shadow-lg hover:bg-white/20 transition-all text-slate-700 dark:text-slate-300 hover:text-indigo-500"
+                className="relative w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
             >
                 <Bell size={18} />
                 {unreadCount > 0 && (

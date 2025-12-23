@@ -12,6 +12,9 @@ export default async function NotificationSettings() {
     // Default if not exists (upsert)
     if (!settings) {
         settings = {
+            user_id: profile.id,
+            updated_at: new Date().toISOString(),
+            push_enabled: false,
             email_enabled: true,
             email_application_updates: true,
             email_messages: true,

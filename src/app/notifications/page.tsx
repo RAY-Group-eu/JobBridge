@@ -25,15 +25,18 @@ export default async function NotificationsPage() {
                         Keine Benachrichtigungen vorhanden.
                     </div>
                 ) : (
-                    notifications.map((n) => (
-                        <div key={n.id} className={`p-4 rounded-2xl border transition ${n.read_at ? 'bg-white/5 border-white/5 opacity-70' : 'bg-white/10 border-indigo-500/30'}`}>
-                            <div className="flex justify-between items-start mb-1">
-                                <h3 className="font-semibold text-white">{n.title}</h3>
-                                <span className="text-xs text-slate-400">{new Date(n.created_at).toLocaleDateString()}</span>
+                    notifications.map((n) => {
+                        const payload = n.payload as { title?: string, body?: string } | null;
+                        return (
+                            <div key={n.id} className={`p-4 rounded-2xl border transition ${n.read_at ? 'bg-white/5 border-white/5 opacity-70' : 'bg-white/10 border-indigo-500/30'}`}>
+                                <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-semibold text-white">{payload?.title || "Benachrichtigung"}</h3>
+                                    <span className="text-xs text-slate-400">{new Date(n.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-slate-300 text-sm">{payload?.body || ""}</p>
                             </div>
-                            <p className="text-slate-300 text-sm">{n.body}</p>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

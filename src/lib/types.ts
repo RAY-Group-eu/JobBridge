@@ -16,6 +16,10 @@ export type Profile = {
   email?: string; // Often joined from auth.users or waitlist, keeping optional
 };
 
+// ... (skipping types not modified, but replace_file_content needs contiguous block)
+// I will split this into two replacements or use multi_replace if I can't reach isProfileComplete in one go? 
+// They are far apart (lines 6-17 vs 303-308). I will use multi_replace.
+
 export type Job = {
   id: string;
   title: string;

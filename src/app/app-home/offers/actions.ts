@@ -4,7 +4,8 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getDemoStatus, getTable } from "@/lib/demo";
+import { getDemoStatus } from "@/lib/demo";
+import { createJobService } from "@/lib/services/jobs";
 
 const createJobSchema = z.object({
     title: z.string().min(5, "Titel muss mindestens 5 Zeichen lang sein."),
@@ -44,42 +45,35 @@ export async function createJob(prevState: any, formData: FormData) {
         return { error: validated.error.issues[0].message };
     }
 
-    const jobsTable = getTable("jobs", isDemo);
-
-    // Insert Job
-    const { data: job, error: jobError } = await (supabase.from(jobsTable) as any).insert({
-        title: validated.data.title,
-        description: validated.data.description,
-        posted_by: user.id,
-        status: "open",
-        market_id: profile.market_id,
-        public_location_label: isDemo ? "[DEMO] Rheinbach" : "Rheinbach (Zentrum)",
-        public_lat: 50.63,
-        public_lng: 6.95,
-        address_reveal_policy: "after_apply"
-    }).select().single();
-
-    if (jobError || !job) {
-        console.error("Create Job Error:", jobError);
-        return { error: "Fehler beim Erstellen des Inserats." };
-    }
-
-    // Insert Private Details (Skip for Demo to avoid complex FK issues for MVP)
-    if (!isDemo) {
-        const { error: privateError } = await (supabase.from("job_private_details") as any).insert({
-            job_id: job.id,
+    // Insert Job via Service
+    const { error: serviceError } = await createJobService(
+        user.id,
+        {
+            posted_by: user.id,
+            market_id: profile.market_id,
+            title: validated.data.title,
+            description: validated.data.description,
+            wage_hourly: 15, // Default wage as form doesn't seem to have it in this specific file, or defaulted in schema
+            status: "open",
+            category: "other",
+            public_location_label: isDemo ? "[DEMO] Rheinbach" : "Rheinbach (Zentrum)",
+            public_lat: 50.63,
+            public_lng: 6.95,
+            address_reveal_policy: "after_apply"
+        },
+        // Private Details
+        {
             address_full: validated.data.address_full,
             private_lat: 50.6255,
             private_lng: 6.9455,
             notes: "Private Access Only"
-        });
+        },
+        isDemo
+    );
 
-        if (privateError) {
-            console.error("Create Private Details Error:", privateError);
-            // Attempt rollback
-            await supabase.from("jobs").delete().eq("id", job.id);
-            return { error: "Fehler beim Speichern der Details." };
-        }
+    if (serviceError) {
+        console.error("Create Job Error:", serviceError);
+        return { error: "Fehler beim Erstellen des Inserats." };
     }
 
     revalidatePath("/app-home/offers");

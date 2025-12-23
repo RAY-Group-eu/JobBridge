@@ -88,6 +88,11 @@ export interface Database {
                     status: Database["public"]["Enums"]["job_status"]
                     title: string
                     wage_hourly: number | null
+                    public_location_label: string | null
+                    public_lat: number | null
+                    public_lng: number | null
+                    category: string | null
+                    address_reveal_policy: string | null
                 }
                 Insert: {
                     created_at?: string
@@ -271,6 +276,9 @@ export interface Database {
                     push_enabled: boolean
                     updated_at: string
                     user_id: string
+                    email_application_updates?: boolean
+                    email_messages?: boolean
+                    digest_frequency?: string
                 }
                 Insert: {
                     email_enabled?: boolean
@@ -299,7 +307,7 @@ export interface Database {
                     created_at: string
                     id: string
                     payload: Json | null
-                    read: boolean
+                    read_at: string | null
                     type: string
                     user_id: string
                 }
@@ -307,7 +315,7 @@ export interface Database {
                     created_at?: string
                     id?: string
                     payload?: Json | null
-                    read?: boolean
+                    read_at?: string | null
                     type: string
                     user_id: string
                 }
@@ -315,8 +323,8 @@ export interface Database {
                     created_at?: string
                     id?: string
                     payload?: Json | null
-                    read?: boolean
-                    type: string
+                    read_at?: string | null
+                    type?: string
                     user_id?: string
                 }
                 Relationships: [
@@ -383,6 +391,12 @@ export interface Database {
                     lat: number
                     lng: number
                     radius_km: number | null
+                    slug: string | null
+                    brand_prefix: string | null
+                    city: string
+                    centroid_lat: number | null
+                    centroid_lng: number | null
+                    is_live: boolean
                 }
                 Insert: {
                     cnt_jobs?: number | null
@@ -393,6 +407,12 @@ export interface Database {
                     lat: number
                     lng: number
                     radius_km?: number | null
+                    slug?: string | null
+                    brand_prefix?: string | null
+                    city: string
+                    centroid_lat?: number | null
+                    centroid_lng?: number | null
+                    is_live?: boolean
                 }
                 Update: {
                     cnt_jobs?: number | null
@@ -403,6 +423,12 @@ export interface Database {
                     lat?: number
                     lng?: number
                     radius_km?: number | null
+                    slug?: string | null
+                    brand_prefix?: string | null
+                    city?: string
+                    centroid_lat?: number | null
+                    centroid_lng?: number | null
+                    is_live?: boolean
                 }
                 Relationships: []
             }
@@ -566,6 +592,25 @@ export interface Database {
                     federal_state?: string | null
                     id?: string
                     role?: string | null
+                }
+                Relationships: []
+            }
+
+            verification_attempts: {
+                Row: {
+                    id: string
+                    attempts: number
+                    last_attempt: string | null
+                }
+                Insert: {
+                    id: string
+                    attempts?: number
+                    last_attempt?: string | null
+                }
+                Update: {
+                    id?: string
+                    attempts?: number
+                    last_attempt?: string | null
                 }
                 Relationships: []
             }

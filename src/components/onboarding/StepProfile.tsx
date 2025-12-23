@@ -22,6 +22,7 @@ const roleNotes: Record<UserType, string> = {
     "Für Seniorinnen und Senioren: Wir halten alles besonders gut lesbar und einfach.",
   company:
     "Für Unternehmen: Diese Angaben erscheinen in Ihrem Profil und Jobs.",
+  admin: "Für Administratoren: Verwalten Sie die Plattform.",
 };
 
 export function StepProfile({

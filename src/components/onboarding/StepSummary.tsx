@@ -20,6 +20,7 @@ const roleLabel: Record<UserType, string> = {
   adult: "Privatperson (ich biete Jobs an)",
   senior: "Senior/in – ich suche Unterstützung",
   company: "Unternehmen / Organisation",
+  admin: "Administrator",
 };
 
 export function StepSummary({

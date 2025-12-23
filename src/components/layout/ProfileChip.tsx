@@ -116,20 +116,17 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                             <Link href="/app-home/settings" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left">
                                 Einstellungen
                             </Link>
-                            <Link href="/app-home/settings/notifications" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left">
-                                Benachrichtigungen
-                            </Link>
 
                             {isStaff && (
                                 <>
                                     <div className="my-1 h-px bg-white/5" />
                                     <p className="px-3 pt-2 pb-1 text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Staff Console</p>
                                     <Link href="/admin" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors text-left font-medium">
-                                        Admin Panel
+                                        Staff Console
                                     </Link>
-                                    <button onClick={() => { /* Toggle Demo Logic */ }} className="px-3 py-2 text-sm text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors text-left w-full">
-                                        {isDemo ? "Demo deaktivieren" : "Start Demo Mode"}
-                                    </button>
+                                    <Link href="/admin/demo" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors text-left w-full">
+                                        Demo Mode
+                                    </Link>
                                 </>
                             )}
 
