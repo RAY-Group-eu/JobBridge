@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Activity, Settings, Users, ClipboardList } from "lucide-react";
+import { Briefcase, Activity, Settings, Users, ClipboardList, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Profile } from "@/lib/types";
 import { motion } from "framer-motion";
@@ -23,7 +23,10 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
 
     let navItems = [];
 
-    if (profile?.user_type === "company") {
+    const isProvider = profile?.account_type === 'job_provider' || profile?.user_type === 'company' || profile?.user_type === 'adult' || profile?.user_type === 'senior';
+    const isAdmin = profile?.user_type === 'admin';
+
+    if (isProvider) {
         navItems = [
             {
                 label: "Jobs",
@@ -34,12 +37,12 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
             {
                 label: "Aktivität",
                 icon: Activity,
-                href: "/app-home/activities",
-                activePattern: /^\/app-home\/activities/,
+                href: "/app-home/activity", // Fixed: was /activities in previous seemingly, but structure says /activity
+                activePattern: /^\/app-home\/activity/,
             },
             ...commonItems
         ];
-    } else if (profile?.user_type === "admin") {
+    } else if (isAdmin) {
         navItems = [
             {
                 label: "Dashboard",
@@ -59,16 +62,22 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
         // Seeker / Youth
         navItems = [
             {
+                label: "Feed",
+                icon: Home, // Changed to Home as per one of the snippets, or keep Briefcase? Step 84 had Briefcase for Jobs.
+                href: "/app-home/feed",
+                activePattern: /^\/app-home\/feed/,
+            },
+            {
                 label: "Jobs",
                 icon: Briefcase,
-                href: "/app-home/jobs",
+                href: "/app-home/jobs", // This is "Meine Jobs" for seekers usually? Or Apply list?
                 activePattern: /^\/app-home\/jobs/,
             },
             {
                 label: "Aktivität",
                 icon: Activity,
-                href: "/app-home/activities",
-                activePattern: /^\/app-home\/activities/,
+                href: "/app-home/activity",
+                activePattern: /^\/app-home\/activity/,
             },
             ...commonItems
         ];
@@ -123,7 +132,6 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
                             )}>
                                 {item.label}
                             </span>
-                            {/* Mobile Text: Show only if active? No, keep Icons only on strict mobile to save space, maybe tooltip later. */}
                         </div>
                     </Link>
                 );

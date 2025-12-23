@@ -14,9 +14,8 @@ type JobRow = Database['public']['Tables']['jobs']['Row'] & {
 export default async function JobsPage() {
     const { profile } = await requireCompleteProfile();
 
-    if (profile.user_type !== "youth") {
-        redirect("/app-home/offers");
-    }
+    // Redirect logic moved to RoleGuard in layout.tsx
+    // if (profile.account_type !== "job_seeker") { ... }
 
     const isVerified = !!profile.is_verified;
     const { isEnabled: isDemo } = await getDemoStatus(profile.id);
@@ -51,6 +50,9 @@ export default async function JobsPage() {
         }
     }
 
+    // Debug: Log to server console
+    console.log(`[JobsPage] Demo: ${isDemo}, Jobs: ${jobs.length}, Market: ${profile.market_id}`);
+
     return (
         <div className="container mx-auto py-12 px-4 md:px-6">
             <div className="mx-auto max-w-4xl space-y-8">
@@ -64,6 +66,9 @@ export default async function JobsPage() {
                 {(!jobs || jobs.length === 0) ? (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-sm">
                         <p className="text-slate-300">Aktuell sind keine neuen Jobs verfügbar.</p>
+                        <div className="mt-4 text-[10px] text-slate-600 font-mono">
+                            Debug: {profile.market_id?.slice(0, 8)} | Joined: {profile.created_at?.slice(0, 10)}
+                        </div>
                     </div>
                 ) : (
                     <div className="grid gap-4">

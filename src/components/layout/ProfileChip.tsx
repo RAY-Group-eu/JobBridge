@@ -20,11 +20,25 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
 
-    if (!profile) return null;
+    // Skeleton State to prevent Layout Shift
+    if (!profile) {
+        return (
+            <div className={cn("relative", className)}>
+                <div className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/5 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                    <div className="flex flex-col gap-1.5">
+                        <div className="w-20 h-3 rounded bg-white/10 animate-pulse" />
+                        <div className="w-12 h-2 rounded bg-white/10 animate-pulse" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
-    const isCompany = profile.user_type === "company";
-    const label = isCompany ? "Anbieter" : "Jobsuchend";
-    const icon = isCompany ? <Building2 size={14} /> : <User size={14} />;
+    // Use account_type if available (preferred), otherwise fallback to user_type
+    const isProvider = profile.account_type === "job_provider" || profile.user_type === "company";
+    const label = isProvider ? "Jobanbieter" : "Jobsuchend";
+    const icon = isProvider ? <Building2 size={14} /> : <User size={14} />;
 
     // Logic for verified badge (simplistic for now)
     const isVerified = profile.is_verified;
@@ -48,7 +62,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
         <div className={cn("relative", className)}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-slate-900/40 hover:bg-slate-900/60 border border-white/10 hover:border-white/20 shadow-sm transition-all duration-200 group"
+                className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md border border-white/10 shadow-sm transition-all duration-200 group"
             >
                 {/* Avatar Circle */}
                 <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 ring-2 ring-white/5 group-hover:ring-white/10 transition-all">
@@ -68,7 +82,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                         {profile.full_name}
                     </span>
                     <div className="flex items-center gap-1.5">
-                        <span className={cn("text-[10px] uppercase tracking-wider font-semibold", isCompany ? "text-purple-400" : "text-blue-400")}>
+                        <span className={cn("text-[10px] uppercase tracking-wider font-semibold", isProvider ? "text-purple-400" : "text-blue-400")}>
                             {label}
                         </span>
                         {/* Demo Badge */}
@@ -77,7 +91,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                                 DEMO
                             </span>
                         )}
-                        {!isCompany && !isDemo && (
+                        {!isProvider && !isDemo && (
                             !isVerified ? <AlertCircle size={10} className="text-amber-500" /> : <CheckCircle2 size={10} className="text-emerald-500" />
                         )}
                     </div>
@@ -113,9 +127,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                             <Link href="/app-home/profile" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left">
                                 Profil anzeigen
                             </Link>
-                            <Link href="/app-home/settings" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left">
-                                Einstellungen
-                            </Link>
+                            {/* Settings link removed as per request */}
 
                             {isStaff && (
                                 <>

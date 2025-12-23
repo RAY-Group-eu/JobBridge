@@ -19,9 +19,8 @@ export default async function OffersPage({
 }) {
     const { profile } = await requireCompleteProfile();
 
-    if (profile.user_type !== "company") {
-        redirect("/app-home/jobs");
-    }
+    // Redirect logic moved to RoleGuard in layout.tsx
+    // if (profile.account_type !== "job_provider") { ... }
 
     const { isEnabled: isDemo } = await getDemoStatus(profile.id);
 

@@ -1,4 +1,5 @@
 export type UserType = "youth" | "adult" | "senior" | "company" | "admin";
+export type AccountType = "job_seeker" | "job_provider";
 export type JobStatus = "draft" | "open" | "closed";
 export type ApplicationStatus = "submitted" | "withdrawn" | "accepted" | "rejected";
 export type SystemRoleType = "admin" | "moderator" | "analyst";
@@ -9,6 +10,8 @@ export type Profile = {
   birthdate: string | null;
   city: string | null;
   user_type: UserType | null;
+  // account_type might not be in DB yet, but we will maintain it in runtime objects
+  account_type?: AccountType;
   is_verified: boolean | null;
   market_id: string | null;
   theme_preference?: "light" | "dark" | "system";
@@ -57,6 +60,19 @@ export type SecurityEvent = {
   event_type: string;
   ip_address: string | null;
   user_agent: string | null;
+  created_at: string;
+};
+
+export type ProviderLocation = {
+  id: string;
+  provider_id: string;
+  address_line1: string;
+  postal_code: string;
+  city: string;
+  lat?: number;
+  lng?: number;
+  approx_label?: string;
+  is_default: boolean;
   created_at: string;
 };
 

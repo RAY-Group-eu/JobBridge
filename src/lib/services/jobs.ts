@@ -18,10 +18,11 @@ export type CreateJobParams = {
 };
 
 export type JobPrivateParams = {
-    address_full?: string;
+    address_full?: string | null;
     private_lat?: number;
     private_lng?: number;
     notes?: string;
+    location_id?: string | null;
 };
 
 // --- Helper Functions ---
@@ -56,8 +57,6 @@ async function createDemoJob(
     supabase: SupabaseClient<Database>,
     payload: CreateJobParams
 ) {
-    // Note: Implicitly relies on DB patch being applied for full column support.
-    // If patch missing, this might error on undefined columns, but that's expected state now.
     const { data, error } = await supabase
         .from("demo_jobs")
         .insert({
@@ -69,16 +68,7 @@ async function createDemoJob(
             status: payload.status as Database["public"]["Enums"]["job_status"],
             category: payload.category, // Stored as TEXT in demo_jobs per patch
             address_reveal_policy: payload.address_reveal_policy ?? "after_apply",
-            // Add other columns if they exist in types/DB. 
-            // If types are outdated, might need cast or regeneration.
-            // Assuming types are up to date or compatible enough.
-        } as any) // Keep any cast ONLY for demo_jobs if types are strictly lagging behind patch, but try to minimize. 
-        // User asked to remove any-casts. Let's try to be strict.
-        // If demo_jobs type definition in supabase.ts is missing columns, TS will complain.
-        // I will trust the types are mostly there or I'll fix types if needed.
-        // Actually, looking at previous type dump, demo_jobs was missing wage_hourly etc.
-        // So I might need 'as any' for demo_jobs specifically UNTIL types are regenerated.
-        // But for "jobs" (real), it must be strict.
+        } as any)
         .select()
         .single();
 
@@ -98,7 +88,8 @@ async function createRealJobPrivateDetails(
             address_full: params.address_full,
             private_lat: params.private_lat,
             private_lng: params.private_lng,
-            notes: params.notes
+            notes: params.notes,
+            location_id: params.location_id
         });
     if (error) throw error;
 }

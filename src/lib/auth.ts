@@ -1,7 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "./supabaseServer";
-import { Profile, isProfileComplete, UserType, SystemRoleType } from "./types";
+import { Profile, isProfileComplete, UserType, SystemRoleType, AccountType } from "./types";
 
 export type AuthState =
   | { state: "no-session" }
@@ -43,11 +43,11 @@ export const getCurrentSessionAndProfile = async (): Promise<{
     ? (rolesResult.data as any[]).map((r) => r.role?.name).filter(Boolean)
     : [];
 
-  // --- DEMO MODE INJECTION ---
+  // --- DEMO MODE & ACCOUNT TYPE LOGIC ---
+  let accountType: AccountType = 'job_seeker'; // Default safe fallback
+
   if (profile) {
-    // We check the demo status to see if we should simulate a different role
-    // We use a safe inline check to avoid massive dependency cycles contextually,
-    // but importing getDemoStatus from lib/demo is safe given project structure.
+    // 1. Check Demo Mode
     const { data: demoSession } = await supabase
       .from("demo_sessions")
       .select("enabled, demo_view")
@@ -55,13 +55,27 @@ export const getCurrentSessionAndProfile = async (): Promise<{
       .single();
 
     if (demoSession?.enabled) {
-      // Overwrite user_type based on demo_view
       if (demoSession.demo_view === 'job_provider') {
-        profile.user_type = 'company';
+        profile.user_type = 'company'; // Simulate for legacy checks
+        accountType = 'job_provider';
       } else {
-        profile.user_type = 'youth';
+        profile.user_type = 'youth'; // Simulate for legacy checks
+        accountType = 'job_seeker';
+      }
+    } else {
+      // 2. Real Mode: Map UserType to AccountType
+      // youth -> job_seeker
+      // adult, senior, company -> job_provider
+      // admin -> job_provider (or handle separately if needed, currently admin uses admin panel)
+      if (profile.user_type === 'youth') {
+        accountType = 'job_seeker';
+      } else {
+        accountType = 'job_provider';
       }
     }
+
+    // Attach to profile object for easy access downstream
+    profile.account_type = accountType;
   }
   // ---------------------------
 
@@ -69,8 +83,8 @@ export const getCurrentSessionAndProfile = async (): Promise<{
 };
 
 // Helpers
-export const isAccountType = (profile: Profile | null, type: UserType) => {
-  return profile?.user_type === type;
+export const isAccountType = (profile: Profile | null, type: AccountType) => {
+  return profile?.account_type === type;
 };
 
 export const hasSystemRole = (userRoles: string[], role: SystemRoleType) => {

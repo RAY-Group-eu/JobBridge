@@ -3,6 +3,8 @@ import { getAuthState, requireCompleteProfile } from "@/lib/auth";
 import { LiquidBackground } from "@/components/ui/LiquidBackground";
 import { redirect } from "next/navigation";
 import { getDemoStatus } from "@/lib/demo";
+import { DebugRolePanel } from "@/components/debug/DebugRolePanel";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 export default async function AppHomeLayout({
     children,
@@ -22,6 +24,10 @@ export default async function AppHomeLayout({
         <div className="relative flex min-h-screen flex-col bg-slate-950 text-slate-50">
             {/* Shared Background for the entire app area */}
             <LiquidBackground />
+
+            {/* Persistence & Logic */}
+            <DebugRolePanel profile={profile} />
+            <RoleGuard profile={profile} />
 
             {/* Persistent Header */}
             <AppHeader profile={profile} isDemo={isDemo} />

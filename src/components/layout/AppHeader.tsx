@@ -14,7 +14,7 @@ export function AppHeader({ profile, isDemo }: { profile: Profile | null; isDemo
             {/* pointer-events-none on container so clicks pass through gaps, verify this logic */}
             {/* Actually, floating elements should catch events. Container is invisible. */}
 
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 md:gap-4 pointer-events-auto">
+            <div className="max-w-7xl mx-auto h-12 flex items-center justify-between gap-2 md:gap-4 pointer-events-auto">
 
                 {/* 1. Left: Brand */}
                 <div className="flex-shrink-0 flex items-center gap-3">
