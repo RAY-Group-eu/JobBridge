@@ -14,6 +14,8 @@ export function DebugRolePanel({ profile }: { profile: Profile | null }) {
 
     if (!mounted) return null;
 
+    if (process.env.NEXT_PUBLIC_SHOW_DEBUG_ROLE_PANEL !== "true") return null;
+
     // Derive account_type locally to compare with server passed one (if any)
     // But we rely on what was passed from server
     const serverAccountType = profile?.account_type || "undefined";

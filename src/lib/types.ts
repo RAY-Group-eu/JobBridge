@@ -63,19 +63,6 @@ export type SecurityEvent = {
   created_at: string;
 };
 
-export type ProviderLocation = {
-  id: string;
-  provider_id: string;
-  address_line1: string;
-  postal_code: string;
-  city: string;
-  lat?: number;
-  lng?: number;
-  approx_label?: string;
-  is_default: boolean;
-  created_at: string;
-};
-
 export type Database = {
   public: {
     Tables: {

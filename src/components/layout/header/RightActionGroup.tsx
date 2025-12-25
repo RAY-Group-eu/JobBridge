@@ -5,7 +5,7 @@ import { NotificationsPopover } from "@/components/notifications/NotificationsPo
 
 export function RightActionGroup({ profile, isDemo }: { profile: Profile | null; isDemo?: boolean }) {
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 min-[420px]:gap-3">
             {/* Notifications */}
             <NotificationsPopover />
 

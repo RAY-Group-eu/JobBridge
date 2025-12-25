@@ -17,7 +17,7 @@ export function AppHeader({ profile, isDemo }: { profile: Profile | null; isDemo
             <div className="max-w-7xl mx-auto h-12 flex items-center justify-between gap-2 md:gap-4 pointer-events-auto">
 
                 {/* 1. Left: Brand */}
-                <div className="flex-shrink-0 flex items-center gap-3">
+                <div className="flex-shrink-0 flex items-center gap-1 md:gap-3">
                     <LeftBrandChip />
                 </div>
 

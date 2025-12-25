@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Activity, Settings, Users, ClipboardList, Home } from "lucide-react";
+import { Briefcase, Activity, Settings, Users, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Profile } from "@/lib/types";
 import { motion } from "framer-motion";
@@ -24,7 +24,7 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
     let navItems = [];
 
     const isProvider = profile?.account_type === 'job_provider' || profile?.user_type === 'company' || profile?.user_type === 'adult' || profile?.user_type === 'senior';
-    const isAdmin = profile?.user_type === 'admin';
+    const isAdmin = profile?.user_type === 'admin'; // Admin stays specific
 
     if (isProvider) {
         navItems = [
@@ -37,8 +37,8 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
             {
                 label: "Aktivität",
                 icon: Activity,
-                href: "/app-home/activity", // Fixed: was /activities in previous seemingly, but structure says /activity
-                activePattern: /^\/app-home\/activity/,
+                href: "/app-home/activities",
+                activePattern: /^\/app-home\/activities/,
             },
             ...commonItems
         ];
@@ -62,22 +62,16 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
         // Seeker / Youth
         navItems = [
             {
-                label: "Feed",
-                icon: Home, // Changed to Home as per one of the snippets, or keep Briefcase? Step 84 had Briefcase for Jobs.
-                href: "/app-home/feed",
-                activePattern: /^\/app-home\/feed/,
-            },
-            {
                 label: "Jobs",
                 icon: Briefcase,
-                href: "/app-home/jobs", // This is "Meine Jobs" for seekers usually? Or Apply list?
+                href: "/app-home/jobs",
                 activePattern: /^\/app-home\/jobs/,
             },
             {
                 label: "Aktivität",
                 icon: Activity,
-                href: "/app-home/activity",
-                activePattern: /^\/app-home\/activity/,
+                href: "/app-home/activities",
+                activePattern: /^\/app-home\/activities/,
             },
             ...commonItems
         ];
@@ -93,7 +87,7 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            "relative flex items-center justify-center px-5 py-2.5 rounded-full transition-all duration-300 group outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                            "relative flex items-center justify-center px-3 md:px-5 py-2.5 rounded-full transition-all duration-300 group outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                             isActive
                                 ? "text-white"
                                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
@@ -128,10 +122,11 @@ export function CenterNavPill({ profile }: { profile: Profile | null }) {
                             />
                             <span className={cn(
                                 "font-medium text-sm transition-all duration-300",
-                                isActive ? "opacity-100" : "opacity-0 w-0 hidden md:inline-block md:opacity-100 md:w-auto"
+                                isActive ? "opacity-100 hidden md:inline-block" : "opacity-0 w-0 hidden"
                             )}>
                                 {item.label}
                             </span>
+                            {/* Mobile Text: Show only if active? No, keep Icons only on strict mobile to save space, maybe tooltip later. */}
                         </div>
                     </Link>
                 );

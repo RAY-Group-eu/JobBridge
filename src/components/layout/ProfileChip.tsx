@@ -24,9 +24,9 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
     if (!profile) {
         return (
             <div className={cn("relative", className)}>
-                <div className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/5 shadow-sm">
-                    <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
-                    <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-3 px-1 md:pl-2 md:pr-4 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/5 shadow-sm">
+                    <div className="w-11 h-11 rounded-full bg-white/10 animate-pulse" />
+                    <div className="hidden md:flex flex-col gap-1.5">
                         <div className="w-20 h-3 rounded bg-white/10 animate-pulse" />
                         <div className="w-12 h-2 rounded bg-white/10 animate-pulse" />
                     </div>
@@ -62,10 +62,10 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
         <div className={cn("relative", className)}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md border border-white/10 shadow-sm transition-all duration-200 group"
+                className="flex items-center gap-2 md:gap-3 px-1 md:pl-2 md:pr-4 py-1 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md border border-white/10 shadow-sm transition-all duration-200 group"
             >
                 {/* Avatar Circle */}
-                <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 ring-2 ring-white/5 group-hover:ring-white/10 transition-all">
+                <div className="relative flex items-center justify-center w-11 h-11 rounded-full bg-indigo-500/20 text-indigo-300 ring-2 ring-white/5 group-hover:ring-white/10 transition-all shrink-0">
                     <span className="text-sm font-semibold">
                         {profile.full_name?.charAt(0).toUpperCase() || "?"}
                     </span>
@@ -77,7 +77,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                 </div>
 
                 {/* Text Info */}
-                <div className="flex flex-col items-start text-left">
+                <div className="hidden md:flex flex-col items-start text-left">
                     <span className="text-sm font-medium text-slate-200 leading-none mb-1 max-w-[100px] truncate">
                         {profile.full_name}
                     </span>
@@ -97,7 +97,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                     </div>
                 </div>
 
-                <ChevronDown size={14} className={cn("text-slate-500 transition-transform duration-200", isOpen && "rotate-180")} />
+                <ChevronDown size={14} className={cn("text-slate-500 transition-transform duration-200 hidden md:block", isOpen && "rotate-180")} />
             </button>
 
             {/* Dropdown Menu */}
