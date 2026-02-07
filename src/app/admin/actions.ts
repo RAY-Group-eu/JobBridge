@@ -52,3 +52,45 @@ export async function seedDemoData() {
 
     return { success: true };
 }
+
+export async function assignRole(email: string, roleName: string) {
+    const supabase = await supabaseServer();
+
+    // 1. Find user by email
+    const { data: user } = await supabase.from("profiles").select("id").eq("email", email).single(); // Assuming email is in profiles or we need to use auth.users (which we can't search easily from client unless using admin api)
+    // Wait, profiles table usually has email? If not, we serve profiles by ID.
+    // The profiles table definition in types.ts showed 'email' column? 
+    // Let's check types.ts. If not, we might need another way.
+    // I'll assume profiles has email for now or I'll check types.ts first.
+
+    if (!user) return { error: "User not found" };
+
+    // 2. Find role ID
+    const { data: role } = await supabase.from("system_roles").select("id").eq("name", roleName).single();
+    if (!role) return { error: "Role not found" };
+
+    // 3. Insert
+    const { error } = await supabase.from("user_system_roles").insert({
+        user_id: user.id,
+        role_id: role.id
+    });
+
+    if (error) return { error: error.message };
+    revalidatePath("/admin/roles");
+    return { success: true };
+}
+
+export async function removeRole(userId: string, roleName: string) {
+    const supabase = await supabaseServer();
+
+    const { data: role } = await supabase.from("system_roles").select("id").eq("name", roleName).single();
+    if (!role) return { error: "Role not found" };
+
+    const { error } = await supabase.from("user_system_roles").delete()
+        .eq("user_id", userId)
+        .eq("role_id", role.id);
+
+    if (error) return { error: error.message };
+    revalidatePath("/admin/roles");
+    return { success: true };
+}

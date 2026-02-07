@@ -2,9 +2,7 @@ import { requireCompleteProfile } from "@/lib/auth";
 import { GuardianBanner } from "@/components/profile/GuardianBanner";
 import { ProfileEditForm } from "@/components/profile/ProfileEditForm";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { redirect } from "next/navigation";
-import { SecurityEvent } from "@/lib/types";
-import { Database } from "@/lib/types/supabase";
+import { Clock3, Mail, ShieldCheck } from "lucide-react";
 
 // Enforce strict type for the roles join
 type UserRoleData = {
@@ -18,10 +16,11 @@ export default async function ProfilePage() {
     const { profile, session } = await requireCompleteProfile();
     const isYouth = profile.user_type === "youth";
     const supabase = await supabaseServer();
+    const displayName = profile.full_name?.trim() || "Nicht hinterlegt";
 
     // 1. Fetch Staff Roles
     // We explicitly cast the result or use a known type to avoid 'any'
-    const { data: rolesData, error: rolesError } = await supabase
+    const { data: rolesData } = await supabase
         .from("user_system_roles")
         .select(`
             role_id,
@@ -34,7 +33,6 @@ export default async function ProfilePage() {
     // Manual type assertion / mapping because join types are complex
     const roles = rolesData as unknown as UserRoleData[];
     const isStaff = roles && roles.length > 0;
-    const roleNames = roles?.map(r => r.system_roles?.name).filter(Boolean).join(", ");
 
     // 2. Fetch Security Events (Last Login)
     const { data: securityEvents } = await supabase
@@ -47,12 +45,23 @@ export default async function ProfilePage() {
     const lastLogin = securityEvents && securityEvents.length > 0 ? securityEvents[0] : null;
 
     // 3. Prepare display data
-    // We treat city/market as read-only from the profile
-    const locationDisplay = profile.city || "Kein Ort festgelegt";
+    const locationDisplay = profile.city?.trim() || "Kein Ort festgelegt";
+    const accountLabel = profile.account_type === "job_provider" || profile.user_type === "company"
+        ? "Jobanbieter"
+        : "Jobsuchend";
+    const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("de-DE") : "-";
+    const lastLoginDisplay = lastLogin ? new Date(lastLogin.created_at).toLocaleString("de-DE") : "Noch kein Login protokolliert";
+    const profileEmail = profile.email?.trim() || session.user.email || "Keine E-Mail hinterlegt";
 
     return (
-        <div className="container mx-auto py-8 px-4 md:px-6 max-w-5xl">
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-8">Dein Profil</h1>
+        <div className="container mx-auto max-w-6xl px-4 py-8 md:px-6">
+            <div className="mb-8">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Kontoübersicht</p>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Dein Profil</h1>
+                <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                    Alle wichtigen Daten auf einen Blick. Klar strukturiert und leicht verständlich.
+                </p>
+            </div>
 
             {isYouth && (
                 <div className="mb-8">
@@ -60,17 +69,17 @@ export default async function ProfilePage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
                 {/* Left Column: Public Profile Preview & Stats (4 columns) */}
-                <div className="lg:col-span-4 space-y-6">
+                <div className="flex flex-col gap-6 lg:col-span-4">
                     {/* Access Card */}
-                    <div className="bg-[#121217] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+                    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#121217] p-6 shadow-xl">
+                        <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-cyan-400 to-indigo-500" />
 
                         <div className="flex flex-col items-center text-center">
                             <div className="relative mb-4">
                                 <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-3xl font-bold text-slate-200 ring-4 ring-[#1A1A23]">
-                                    {profile.full_name?.charAt(0).toUpperCase() || "?"}
+                                    {displayName.charAt(0).toUpperCase() || "?"}
                                 </div>
                                 {isStaff && (
                                     <div className="absolute -bottom-1 -right-1 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-[#121217]">
@@ -80,31 +89,33 @@ export default async function ProfilePage() {
                             </div>
 
                             <h2 className="text-xl font-bold text-white mb-1">
-                                {profile.full_name}
+                                {displayName}
                             </h2>
                             <p className="text-sm text-slate-400 mb-4 capitalize">
-                                {profile.user_type} Account
+                                {accountLabel}
                             </p>
 
-                            <div className="w-full h-px bg-white/5 my-4" />
-
-                            <div className="w-full space-y-3 text-left">
-                                <div className="flex justify-between text-sm">
+                            <div className="mt-2 w-full text-left">
+                                <div className="flex items-center justify-between border-t border-white/5 py-2.5 text-sm">
                                     <span className="text-slate-500">Status</span>
-                                    <span className={profile.is_verified ? "text-emerald-400" : "text-amber-400"}>
+                                    <span
+                                        className={profile.is_verified
+                                            ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300"
+                                            : "rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-300"}
+                                    >
                                         {profile.is_verified ? "Verifiziert" : "Nicht verifiziert"}
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between border-t border-white/5 py-2.5 text-sm">
                                     <span className="text-slate-500">Standort</span>
-                                    <span className="text-slate-300 truncate max-w-[120px]" title={locationDisplay}>
+                                    <span className="truncate text-slate-300 max-w-[140px]" title={locationDisplay}>
                                         {locationDisplay}
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between border-t border-white/5 py-2.5 text-sm">
                                     <span className="text-slate-500">Mitglied seit</span>
                                     <span className="text-slate-300">
-                                        {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "-"}
+                                        {memberSince}
                                     </span>
                                 </div>
                             </div>
@@ -112,34 +123,36 @@ export default async function ProfilePage() {
                     </div>
 
                     {/* Security Card */}
-                    <div className="bg-[#121217] border border-white/10 rounded-2xl p-6 shadow-xl">
+                    <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-[#121217] p-6 shadow-xl">
                         <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Sicherheit</h3>
                         <div className="space-y-3">
-                            <div className="text-sm">
-                                <p className="text-slate-400 text-xs mb-1">Email</p>
-                                <p className="text-slate-200 truncate">{profile.email}</p>
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+                                <p className="mb-1 flex items-center gap-2 text-xs text-slate-400">
+                                    <Mail size={13} />
+                                    E-Mail
+                                </p>
+                                <p className="truncate text-slate-200">{profileEmail}</p>
                             </div>
-                            {lastLogin && (
-                                <div className="text-sm">
-                                    <p className="text-slate-400 text-xs mb-1">Letzter Login</p>
-                                    <p className="text-slate-200">
-                                        {new Date(lastLogin.created_at).toLocaleString()}
-                                    </p>
-                                </div>
-                            )}
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+                                <p className="mb-1 flex items-center gap-2 text-xs text-slate-400">
+                                    <Clock3 size={13} />
+                                    Letzter Login
+                                </p>
+                                <p className="text-slate-200">{lastLoginDisplay}</p>
+                            </div>
+                            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100/90">
+                                <p className="flex items-center gap-2 font-medium">
+                                    <ShieldCheck size={13} />
+                                    Sicherheitsinfos werden automatisch aus deinem Konto übernommen.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Column: Edit Form (8 columns) */}
-                <div className="lg:col-span-8">
-                    <div className="bg-[#121217] border border-white/10 rounded-2xl p-6 md:p-8 shadow-xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-white">Profil bearbeiten</h2>
-                        </div>
-
-                        <ProfileEditForm profile={profile} />
-                    </div>
+                {/* Right Column: Profile details (8 columns) */}
+                <div className="flex lg:col-span-8">
+                    <ProfileEditForm profile={profile} className="w-full" />
                 </div>
             </div>
         </div>

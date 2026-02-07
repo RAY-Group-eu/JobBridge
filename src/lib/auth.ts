@@ -9,6 +9,66 @@ export type AuthState =
   | { state: "incomplete-profile"; session: Session; profile: Profile | null; systemRoles: string[] }
   | { state: "ready"; session: Session; profile: Profile | null; systemRoles: string[] };
 
+/**
+ * Helper to determine if we should look at Live Data or Demo Data
+ */
+export async function getDataSource(userId: string) {
+  const supabase = await supabaseServer();
+  const { data: demoSession } = await supabase
+    .from("demo_sessions")
+    .select("enabled, demo_view")
+    .eq("user_id", userId)
+    .single();
+
+  if (demoSession?.enabled) {
+    return {
+      mode: 'demo' as const,
+      view: demoSession.demo_view as AccountType
+    };
+  }
+  return { mode: 'live' as const };
+}
+
+/**
+ * Returns the effective role for the user, considering any active overrides.
+ * This does NOT modify the DB, just returns the runtime value.
+ */
+export async function getEffectiveRole(userId: string, baseUserType: UserType | null): Promise<AccountType> {
+  const supabase = await supabaseServer();
+
+  // 1. Check for active override
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: override } = await supabase
+    .from("role_overrides" as any)
+    .select("view_as, expires_at")
+    .eq("user_id", userId)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle() as any;
+
+  if (override) {
+    return override.view_as as AccountType;
+  }
+
+  // 2. Fallback to base user type mapping
+  if (baseUserType === 'youth') return 'job_seeker';
+  return 'job_provider';
+  if (baseUserType === 'youth') return 'job_seeker';
+  return 'job_provider';
+}
+
+export async function getActiveOverride(userId: string) {
+  const supabase = await supabaseServer();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: override } = await supabase
+    .from("role_overrides" as any)
+    .select("view_as, expires_at")
+    .eq("user_id", userId)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle() as any;
+
+  return override;
+}
+
 export const getCurrentSessionAndProfile = async (): Promise<{
   session: Session | null;
   profile: Profile | null;
@@ -23,61 +83,45 @@ export const getCurrentSessionAndProfile = async (): Promise<{
     return { session: null, profile: null, systemRoles: [] };
   }
 
-  // Parallel fetch for profile and roles
-  const [profileResult, rolesResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .maybeSingle(),
-    supabase
-      .from("user_system_roles")
-      .select("role:system_roles(name)")
-      .eq("user_id", session.user.id)
+  // Parallel fetch: profile, roles, demo session, active override
+  // We do manual parallel queries to keep it clean
+  const [profileResult, rolesResult, demoResult, overrideResult] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle(),
+    supabase.from("user_system_roles").select("role:system_roles(name)").eq("user_id", session.user.id),
+    supabase.from("demo_sessions").select("enabled, demo_view").eq("user_id", session.user.id).single(),
+    (supabase.from("role_overrides" as any).select("view_as, expires_at").eq("user_id", session.user.id).gt("expires_at", new Date().toISOString()).maybeSingle() as any)
   ]);
 
   const profile = profileResult.data as Profile | null;
-  // rolesResult.data format: [{ role: { name: "admin" } }, ...]
-  const systemRoles = rolesResult.data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? (rolesResult.data as any[]).map((r) => r.role?.name).filter(Boolean)
-    : [];
+  if (profile && !profile.email && session.user.email) {
+    profile.email = session.user.email;
+  }
 
-  // --- DEMO MODE & ACCOUNT TYPE LOGIC ---
-  let accountType: AccountType = 'job_seeker'; // Default safe fallback
+  // Extract system roles
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const systemRoles = rolesResult.data ? (rolesResult.data as any[]).map((r) => r.role?.name).filter(Boolean) : [];
+
+  // Determine Effective Account Type
+  let accountType: AccountType = 'job_seeker'; // Default
 
   if (profile) {
-    // 1. Check Demo Mode
-    const { data: demoSession } = await supabase
-      .from("demo_sessions")
-      .select("enabled, demo_view")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (demoSession?.enabled) {
-      if (demoSession.demo_view === 'job_provider') {
-        profile.user_type = 'company'; // Simulate for legacy checks
-        accountType = 'job_provider';
-      } else {
-        profile.user_type = 'youth'; // Simulate for legacy checks
-        accountType = 'job_seeker';
-      }
-    } else {
-      // 2. Real Mode: Map UserType to AccountType
-      // youth -> job_seeker
-      // adult, senior, company -> job_provider
-      // admin -> job_provider (or handle separately if needed, currently admin uses admin panel)
-      if (profile.user_type === 'youth') {
-        accountType = 'job_seeker';
-      } else {
-        accountType = 'job_provider';
-      }
+    // Priority 1: Demo Mode (highest priority for view)
+    if (demoResult.data?.enabled) {
+      accountType = demoResult.data.demo_view as AccountType;
+      // We also patch user_type for legacy checks if needed, but be careful not to confuse UI
+      // mostly we just rely on profile.account_type
+    }
+    // Priority 2: Override (if not in demo, allows testing logic on real data)
+    else if (overrideResult.data) {
+      accountType = overrideResult.data.view_as as AccountType;
+    }
+    // Priority 3: Base Profile
+    else {
+      accountType = (profile.user_type === 'youth') ? 'job_seeker' : 'job_provider';
     }
 
-    // Attach to profile object for easy access downstream
     profile.account_type = accountType;
   }
-  // ---------------------------
 
   return { session, profile: profile ?? null, systemRoles };
 };

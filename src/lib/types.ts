@@ -9,6 +9,11 @@ export type Profile = {
   full_name: string | null;
   birthdate: string | null;
   city: string | null;
+  headline: string | null;
+  bio: string | null;
+  phone: string | null;
+  interests: string | null;
+  website: string | null;
   user_type: UserType | null;
   // account_type might not be in DB yet, but we will maintain it in runtime objects
   account_type?: AccountType;
@@ -63,6 +68,15 @@ export type SecurityEvent = {
   created_at: string;
 };
 
+export type RoleOverride = {
+  user_id: string;
+  view_as: "job_seeker" | "job_provider";
+  expires_at: string;
+  reason: string | null;
+  created_by: string;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -73,6 +87,11 @@ export type Database = {
           full_name?: string | null;
           birthdate?: string | null;
           city?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+          phone?: string | null;
+          interests?: string | null;
+          website?: string | null;
           user_type?: UserType | null;
           is_verified?: boolean | null;
           market_id?: string | null;
@@ -284,6 +303,26 @@ export type Database = {
       };
       demo_jobs: Database["public"]["Tables"]["jobs"]; // Reusing structure
       demo_applications: Database["public"]["Tables"]["applications"];
+      role_overrides: {
+        Row: RoleOverride;
+        Insert: {
+          user_id: string;
+          view_as: "job_seeker" | "job_provider";
+          expires_at: string;
+          reason?: string | null;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["role_overrides"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "role_overrides_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -296,6 +335,13 @@ export type Database = {
           p_offset?: number;
         };
         Returns: any[];
+      };
+      has_system_role: {
+        Args: {
+          user_id: string;
+          required_role: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: {

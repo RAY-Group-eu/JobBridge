@@ -11,6 +11,8 @@ import {
     Flag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WorkQueueItem } from "@/lib/adminService";
+import { formatDistanceToNow } from "date-fns";
 
 type Stat = {
     label: string;
@@ -20,14 +22,25 @@ type Stat = {
     color: "blue" | "purple" | "emerald" | "orange";
 };
 
+type ActivityItem = {
+    type: string;
+    message: string;
+    meta: string | null;
+    created_at: string;
+};
+
 export function StatsBento({
-    stats
+    stats,
+    activity,
+    workQueue
 }: {
-    stats: { users: number; jobs: number; applications: number }
+    stats: { users: number; jobs: number; applications: number; isDemo: boolean };
+    activity: ActivityItem[];
+    workQueue: WorkQueueItem[];
 }) {
-    // Mock trends for now
+    // Mock trends for now (could be calculated if we had history)
     const cards: Stat[] = [
-        { label: "Total Users", value: stats.users, trend: "+12% this week", icon: Users, color: "blue" },
+        { label: "Total Users", value: stats.users, trend: stats.isDemo ? "Demo Mode" : "+12% this week", icon: Users, color: "blue" },
         { label: "Active Jobs", value: stats.jobs, trend: "+5 new today", icon: Briefcase, color: "purple" },
         { label: "Applications", value: stats.applications, trend: "8 pending review", icon: FileText, color: "emerald" },
     ];
@@ -84,16 +97,18 @@ export function StatsBento({
                     </div>
 
                     <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
+                        {activity.length === 0 ? (
+                            <p className="text-slate-500 text-sm">No recent activity.</p>
+                        ) : activity.map((item, i) => (
                             <div key={i} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors group">
                                 <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 text-slate-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400 group-hover:border-indigo-500/20 transition-all">
                                     <Users size={16} />
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm text-slate-200">
-                                        <span className="font-semibold text-white">New User</span> registered: <span className="text-slate-400">user_{9000 + i}</span>
+                                        <span dangerouslySetInnerHTML={{ __html: item.message.replace(/:/g, ':<span class="text-white font-semibold">').replace(/$/g, '</span>') }} />
                                     </p>
-                                    <p className="text-xs text-slate-500">2 minutes ago</p>
+                                    <p className="text-xs text-slate-500">{formatTimestamp(item.created_at)}</p>
                                 </div>
                                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                             </div>
@@ -109,27 +124,35 @@ export function StatsBento({
                     </h3>
 
                     <div className="flex-1 flex flex-col gap-3">
-                        <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-start gap-3">
-                            <Flag size={18} className="text-orange-400 mt-1 shrink-0" />
-                            <div>
-                                <h5 className="text-sm font-semibold text-orange-200">Report #124</h5>
-                                <p className="text-xs text-orange-400/80 mt-1">Spam content reported in Job A</p>
+                        {workQueue.length === 0 ? (
+                            <p className="text-slate-500 text-sm">All caught up!</p>
+                        ) : workQueue.map((item) => (
+                            <div key={item.id} className={cn(
+                                "p-4 rounded-2xl border flex items-start gap-3",
+                                item.priority === 'high' ? "bg-orange-500/10 border-orange-500/20" : "bg-blue-500/10 border-blue-500/20"
+                            )}>
+                                {item.type === 'report' ? <Flag size={18} className="text-orange-400 mt-1 shrink-0" /> : <CheckCircle size={18} className="text-blue-400 mt-1 shrink-0" />}
+                                <div>
+                                    <h5 className={cn("text-sm font-semibold", item.priority === 'high' ? "text-orange-200" : "text-blue-200")}>{item.title}</h5>
+                                    <p className={cn("text-xs mt-1", item.priority === 'high' ? "text-orange-400/80" : "text-blue-400/80")}>{item.subtitle}</p>
+                                </div>
                             </div>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-                            <CheckCircle size={18} className="text-blue-400 mt-1 shrink-0" />
-                            <div>
-                                <h5 className="text-sm font-semibold text-blue-200">Verification</h5>
-                                <p className="text-xs text-blue-400/80 mt-1">Provider identity check pending</p>
-                            </div>
-                        </div>
+                        ))}
                     </div>
 
                     <button className="w-full mt-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-sm font-medium transition-all">
-                        Open Queue (5)
+                        Open Queue ({workQueue.length})
                     </button>
                 </div>
             </div>
         </div>
     );
+}
+
+function formatTimestamp(iso: string) {
+    try {
+        return formatDistanceToNow(new Date(iso), { addSuffix: true });
+    } catch (e) {
+        return iso;
+    }
 }

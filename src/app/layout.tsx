@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { MarketProvider } from "@/components/providers/MarketProvider";
+import { TestModeBanner } from "@/components/admin/TestModeBanner";
 
 export default function RootLayout({
   children,
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body className={`${fontSans.variable} min-h-screen bg-background antialiased selection:bg-blue-500/30`}>
         <ThemeProvider defaultTheme="dark" enableSystem={false} storageKey="jobbridge-theme">
           <MarketProvider>
+            <TestModeBanner />
             {children}
           </MarketProvider>
         </ThemeProvider>

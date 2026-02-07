@@ -339,37 +339,52 @@ export interface Database {
             }
             profiles: {
                 Row: {
+                    bio: string | null
                     city: string | null
                     created_at: string
                     email: string
                     full_name: string
+                    headline: string | null
                     id: string
+                    interests: string | null
                     is_verified: boolean | null
                     market_id: string | null
+                    phone: string | null
                     user_type: Database["public"]["Enums"]["user_role"]
                     theme_preference?: "light" | "dark" | "system"
+                    website: string | null
                 }
                 Insert: {
+                    bio?: string | null
                     city?: string | null
                     created_at?: string
                     email: string
                     full_name: string
+                    headline?: string | null
                     id: string
+                    interests?: string | null
                     is_verified?: boolean | null
                     market_id?: string | null
+                    phone?: string | null
                     user_type: Database["public"]["Enums"]["user_role"]
                     theme_preference?: "light" | "dark" | "system"
+                    website?: string | null
                 }
                 Update: {
+                    bio?: string | null
                     city?: string | null
                     created_at?: string
                     email?: string
                     full_name?: string
+                    headline?: string | null
                     id?: string
+                    interests?: string | null
                     is_verified?: boolean | null
                     market_id?: string | null
+                    phone?: string | null
                     user_type?: Database["public"]["Enums"]["user_role"]
                     theme_preference?: "light" | "dark" | "system"
+                    website?: string | null
                 }
                 Relationships: [
                     {

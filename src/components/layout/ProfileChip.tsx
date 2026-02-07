@@ -18,6 +18,7 @@ type ProfileChipProps = {
 export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isStaff, setIsStaff] = useState(false);
+    const [accountEmail, setAccountEmail] = useState<string | null | undefined>(profile?.email?.trim() || undefined);
     const router = useRouter();
     const profileId = profile?.id;
 
@@ -32,6 +33,35 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
         };
         checkRole();
     }, [profileId]);
+
+    useEffect(() => {
+        let isActive = true;
+
+        const resolveEmail = async () => {
+            const profileEmail = profile?.email?.trim();
+            if (profileEmail) {
+                setAccountEmail(profileEmail);
+                return;
+            }
+
+            try {
+                const { data } = await supabaseBrowser.auth.getUser();
+                if (isActive) {
+                    setAccountEmail(data.user?.email?.trim() || null);
+                }
+            } catch {
+                if (isActive) {
+                    setAccountEmail(null);
+                }
+            }
+        };
+
+        resolveEmail();
+
+        return () => {
+            isActive = false;
+        };
+    }, [profile?.email, profileId]);
 
     if (!profile) {
         return (
@@ -121,7 +151,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.96 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute right-0 top-full z-50 mt-2 flex w-[17rem] flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-xl shadow-black/50 backdrop-blur-3xl"
+                            className="absolute right-0 top-full z-50 mt-2 flex w-[18rem] flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-xl shadow-black/50 backdrop-blur-3xl"
                         >
 
                             <div className="mb-1 border-b border-white/10 px-3 py-2">
@@ -129,7 +159,9 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Account</p>
                                     {isStaff && <span className="rounded border border-indigo-500/30 bg-indigo-500/20 px-1.5 py-0.5 text-[10px] text-indigo-300">STAFF</span>}
                                 </div>
-                                <p className="text-sm text-slate-300 truncate">{profile.email || "Keine Email"}</p>
+                                <p className="break-all text-sm text-slate-300">
+                                    {accountEmail === undefined ? "E-Mail wird geladen..." : (accountEmail || "Keine E-Mail hinterlegt")}
+                                </p>
                             </div>
 
                             <Link href="/app-home/profile" onClick={() => setIsOpen(false)} className="rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">

@@ -10,7 +10,8 @@ import {
     Search,
     FileText,
     Flag,
-    Settings
+    Settings,
+    Gift
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +23,9 @@ export function AdminSidebar() {
         { icon: Users, label: "Users", href: "/admin/users" },
         { icon: FileText, label: "Jobs", href: "/admin/jobs" }, // Assuming needed
         { icon: Flag, label: "Moderation", href: "/admin/moderation" },
+        { icon: Gift, label: "Drops", href: "/admin/drops" },
         { icon: Shield, label: "Roles", href: "/admin/roles" },
-        { icon: LayoutDashboard, label: "Demo Mode", href: "/admin/demo" },
+        { icon: Settings, label: "Demo Mode", href: "/admin/demo" }, // Use Settings icon
     ];
 
     return (
