@@ -6,13 +6,25 @@ import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 
+type NotificationPayload = {
+    title?: string;
+    body?: string;
+    message?: string;
+};
+
 type NotificationItem = {
     id: string;
+    type: string;
     title: string | null;
     body: string | null;
     created_at: string;
     read_at: string | null;
 };
+
+function parseNotificationPayload(payload: unknown): NotificationPayload {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+    return payload as NotificationPayload;
+}
 
 export function NotificationsPopover() {
     const [unreadCount, setUnreadCount] = useState(0);
@@ -30,10 +42,23 @@ export function NotificationsPopover() {
 
             const { data } = await supabase
                 .from("notifications")
-                .select("id, title, body, created_at, read_at")
+                .select("id, type, payload, created_at, read_at")
                 .order("created_at", { ascending: false })
                 .limit(5);
-            setNotifications((data as NotificationItem[]) || []);
+            const mapped = (data ?? []).map((notification) => {
+                const payload = parseNotificationPayload(notification.payload);
+                const title = payload.title?.trim() ? payload.title : "Benachrichtigung";
+                const body = payload.body?.trim() || payload.message?.trim() || notification.type;
+                return {
+                    id: notification.id,
+                    type: notification.type,
+                    title,
+                    body,
+                    created_at: notification.created_at,
+                    read_at: notification.read_at,
+                } satisfies NotificationItem;
+            });
+            setNotifications(mapped);
         };
         fetchNotifications();
     }, []);
