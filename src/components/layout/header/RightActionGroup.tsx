@@ -1,18 +1,12 @@
-import { Bell, User } from "lucide-react";
 import { Profile } from "@/lib/types";
-import { ProfileChip } from "../ProfileChip"; // Reuse existing or refactor
+import { ProfileChip } from "../ProfileChip";
 import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
 
 export function RightActionGroup({ profile, isDemo }: { profile: Profile | null; isDemo?: boolean }) {
     return (
-        <div className="flex items-center gap-1 min-[420px]:gap-3">
-            {/* Notifications */}
+        <div className="flex items-center gap-2 min-[420px]:gap-3">
             <NotificationsPopover />
-
-            {/* Profile */}
-            <div className="flex items-center">
-                <ProfileChip profile={profile} isDemo={isDemo} />
-            </div>
+            <ProfileChip profile={profile} isDemo={isDemo} />
         </div>
     );
 }

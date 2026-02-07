@@ -2,10 +2,9 @@
 
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { User, Building2, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Building2, ChevronDown, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,39 +17,41 @@ type ProfileChipProps = {
 
 export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isStaff, setIsStaff] = useState(false);
     const router = useRouter();
+    const profileId = profile?.id;
 
-    // Skeleton State to prevent Layout Shift
+    useEffect(() => {
+        const checkRole = async () => {
+            if (!profileId) {
+                setIsStaff(false);
+                return;
+            }
+            const { data } = await supabaseBrowser.from("user_system_roles").select("role_id").eq("user_id", profileId).single();
+            setIsStaff(!!data);
+        };
+        checkRole();
+    }, [profileId]);
+
     if (!profile) {
         return (
             <div className={cn("relative", className)}>
-                <div className="flex items-center gap-3 px-1 md:pl-2 md:pr-4 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/5 shadow-sm">
-                    <div className="w-11 h-11 rounded-full bg-white/10 animate-pulse" />
+                <div className="flex h-[52px] items-center gap-2 rounded-full border border-white/10 bg-slate-900/40 px-[6px] md:pr-3 shadow-xl backdrop-blur-md">
+                    <div className="h-10 w-10 rounded-full bg-white/10 animate-pulse" />
                     <div className="hidden md:flex flex-col gap-1.5">
-                        <div className="w-20 h-3 rounded bg-white/10 animate-pulse" />
-                        <div className="w-12 h-2 rounded bg-white/10 animate-pulse" />
+                        <div className="h-3 w-20 rounded bg-white/10 animate-pulse" />
+                        <div className="h-2 w-14 rounded bg-white/10 animate-pulse" />
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Use account_type if available (preferred), otherwise fallback to user_type
     const isProvider = profile.account_type === "job_provider" || profile.user_type === "company";
     const label = isProvider ? "Jobanbieter" : "Jobsuchend";
-    const icon = isProvider ? <Building2 size={14} /> : <User size={14} />;
+    const RoleIcon = isProvider ? Building2 : User;
 
-    // Logic for verified badge (simplistic for now)
     const isVerified = profile.is_verified;
-    const [isStaff, setIsStaff] = useState(false);
-
-    useEffect(() => {
-        const checkRole = async () => {
-            const { data } = await supabaseBrowser.from("user_system_roles").select("role_id").eq("user_id", profile.id).single();
-            if (data) setIsStaff(true);
-        };
-        checkRole();
-    }, [profile.id]);
 
     const handleLogout = async () => {
         await supabaseBrowser.auth.signOut();
@@ -61,46 +62,53 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
     return (
         <div className={cn("relative", className)}>
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 md:gap-3 px-1 md:pl-2 md:pr-4 py-1 rounded-full bg-black/20 hover:bg-black/30 backdrop-blur-md border border-white/10 shadow-sm transition-all duration-200 group"
+                aria-expanded={isOpen}
+                aria-haspopup="menu"
+                className={cn(
+                    "group flex h-[52px] items-center gap-2 rounded-full border border-white/10 bg-slate-900/40 pl-[6px] pr-2 shadow-xl backdrop-blur-md transition-all duration-200 md:pr-3",
+                    "hover:border-white/20 hover:bg-slate-900/50",
+                    isOpen && "border-white/25 bg-slate-900/55"
+                )}
             >
-                {/* Avatar Circle */}
-                <div className="relative flex items-center justify-center w-11 h-11 rounded-full bg-indigo-500/20 text-indigo-300 ring-2 ring-white/5 group-hover:ring-white/10 transition-all shrink-0">
-                    <span className="text-sm font-semibold">
-                        {profile.full_name?.charAt(0).toUpperCase() || "?"}
-                    </span>
-                    {/* Status Dot */}
+                <div className="relative h-10 w-10 shrink-0 rounded-full border border-white/10 bg-white/5 p-[1px]">
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 transition-all group-hover:bg-indigo-500/25">
+                        <span className="text-sm font-semibold">
+                            {profile.full_name?.charAt(0).toUpperCase() || "?"}
+                        </span>
+                    </div>
                     <div className={cn(
-                        "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0A0A0A]",
+                        "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-slate-950",
                         isVerified ? "bg-emerald-500" : "bg-amber-500"
                     )} />
                 </div>
 
-                {/* Text Info */}
-                <div className="hidden md:flex flex-col items-start text-left">
-                    <span className="text-sm font-medium text-slate-200 leading-none mb-1 max-w-[100px] truncate">
+                <div className="hidden min-w-0 md:flex md:flex-col md:items-start md:text-left">
+                    <span className="max-w-[120px] truncate text-sm font-medium leading-tight text-slate-100">
                         {profile.full_name}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                        <span className={cn("text-[10px] uppercase tracking-wider font-semibold", isProvider ? "text-purple-400" : "text-blue-400")}>
+                    <div className="mt-0.5 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
+                            <RoleIcon size={10} />
                             {label}
                         </span>
-                        {/* Demo Badge */}
                         {isDemo && (
-                            <span className="text-[9px] px-1 py-px rounded bg-amber-500/20 text-amber-500 font-bold tracking-wider border border-amber-500/30">
+                            <span className="rounded-full border border-amber-500/40 bg-amber-500/15 px-1.5 py-px text-[9px] font-bold tracking-[0.14em] text-amber-300">
                                 DEMO
                             </span>
                         )}
                         {!isProvider && !isDemo && (
-                            !isVerified ? <AlertCircle size={10} className="text-amber-500" /> : <CheckCircle2 size={10} className="text-emerald-500" />
+                            isVerified
+                                ? <CheckCircle2 size={10} className="text-emerald-500" />
+                                : <AlertCircle size={10} className="text-amber-500" />
                         )}
                     </div>
                 </div>
 
-                <ChevronDown size={14} className={cn("text-slate-500 transition-transform duration-200 hidden md:block", isOpen && "rotate-180")} />
+                <ChevronDown size={14} className={cn("hidden text-slate-400 transition-transform duration-200 md:block", isOpen && "rotate-180")} />
             </button>
 
-            {/* Dropdown Menu */}
             <AnimatePresence>
                 {isOpen && (
                     <>
@@ -113,30 +121,29 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.96 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute right-0 top-full mt-2 w-64 p-2 bg-[#121217] border border-white/10 rounded-2xl shadow-xl shadow-black/50 backdrop-blur-3xl z-50 flex flex-col gap-1"
+                            className="absolute right-0 top-full z-50 mt-2 flex w-[17rem] flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/95 p-2 shadow-xl shadow-black/50 backdrop-blur-3xl"
                         >
 
-                            <div className="px-3 py-2 border-b border-white/5 mb-1">
-                                <div className="flex items-center justify-between mb-1">
-                                    <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Account</p>
-                                    {isStaff && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20">STAFF</span>}
+                            <div className="mb-1 border-b border-white/10 px-3 py-2">
+                                <div className="mb-1 flex items-center justify-between">
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Account</p>
+                                    {isStaff && <span className="rounded border border-indigo-500/30 bg-indigo-500/20 px-1.5 py-0.5 text-[10px] text-indigo-300">STAFF</span>}
                                 </div>
                                 <p className="text-sm text-slate-300 truncate">{profile.email || "Keine Email"}</p>
                             </div>
 
-                            <Link href="/app-home/profile" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left">
+                            <Link href="/app-home/profile" onClick={() => setIsOpen(false)} className="rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
                                 Profil anzeigen
                             </Link>
-                            {/* Settings link removed as per request */}
 
                             {isStaff && (
                                 <>
                                     <div className="my-1 h-px bg-white/5" />
-                                    <p className="px-3 pt-2 pb-1 text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Staff Console</p>
-                                    <Link href="/admin" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors text-left font-medium">
+                                    <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Staff Console</p>
+                                    <Link href="/admin" onClick={() => setIsOpen(false)} className="rounded-lg px-3 py-2 text-left text-sm font-medium text-indigo-400 transition-colors hover:bg-indigo-500/10 hover:text-indigo-300">
                                         Staff Console
                                     </Link>
-                                    <Link href="/admin/demo" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors text-left w-full">
+                                    <Link href="/admin/demo" onClick={() => setIsOpen(false)} className="w-full rounded-lg px-3 py-2 text-left text-sm text-amber-500 transition-colors hover:bg-amber-500/10 hover:text-amber-400">
                                         Demo Mode
                                     </Link>
                                 </>
@@ -145,8 +152,9 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                             <div className="my-1 h-px bg-white/5" />
 
                             <button
+                                type="button"
                                 onClick={handleLogout}
-                                className="px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
+                                className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
                             >
                                 Abmelden
                             </button>
