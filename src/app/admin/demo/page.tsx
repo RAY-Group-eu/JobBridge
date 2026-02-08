@@ -2,7 +2,7 @@ import { requireCompleteProfile } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { TestOverrideControl } from "../components/TestOverrideControl";
 import { Database, Zap, RefreshCw, AlertTriangle } from "lucide-react";
-import { toggleDemoMode, seedDemoData } from "../actions";
+import { deactivateDemoMode, setDemoMode } from "../actions";
 import { revalidatePath } from "next/cache";
 
 export default async function DemoModePage() {
@@ -17,21 +17,28 @@ export default async function DemoModePage() {
         .single();
 
     // Fetch active override
-    const { data: activeOverride } = await (supabase.from("role_overrides" as any)
+    const { data: activeOverride } = await (supabase.from("role_overrides" as never)
         .select("view_as, expires_at")
         .eq("user_id", session.user.id)
         .gt("expires_at", new Date().toISOString())
-        .maybeSingle() as any);
+        .maybeSingle());
 
-    async function handleToggleDemo() {
+    async function activateJobSeekerDemo() {
         "use server";
-        await toggleDemoMode(!demoSession?.enabled, (demoSession?.demo_view as 'job_seeker' | 'job_provider') || 'job_seeker');
+        await setDemoMode("job_seeker");
+        revalidatePath("/staff/demo");
     }
 
-    async function handleSeed() {
+    async function activateJobProviderDemo() {
         "use server";
-        await seedDemoData();
-        revalidatePath("/admin/demo");
+        await setDemoMode("job_provider");
+        revalidatePath("/staff/demo");
+    }
+
+    async function disableDemo() {
+        "use server";
+        await deactivateDemoMode();
+        revalidatePath("/staff/demo");
     }
 
     return (
@@ -58,22 +65,51 @@ export default async function DemoModePage() {
                         <Zap className={demoSession?.enabled ? "text-yellow-400" : "text-slate-500"} size={20} />
                         Demo Session
                     </h3>
-                    <p className="text-sm text-slate-400 mb-6">
-                        Enable demo mode to view the application with isolated test data.
-                        Your real data remains safe.
+                    <div className="mb-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Current status</p>
+                        <p className="text-sm mt-1 text-white">
+                            {demoSession?.enabled
+                                ? `ACTIVE (${demoSession.demo_view === "job_provider" ? "Job Provider" : "Job Seeker"})`
+                                : "INACTIVE"}
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-slate-400 mb-4">
+                        Demo mode only switches application behavior to demo tables. Staff dashboard metrics remain live.
                     </p>
 
-                    <form action={handleToggleDemo}>
-                        <button
-                            type="submit"
-                            className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${demoSession?.enabled
-                                ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/20"
-                                : "bg-white/5 text-slate-300 border border-white/5 hover:bg-white/10"
-                                }`}
-                        >
-                            {demoSession?.enabled ? "Deactivate Demo Mode" : "Activate Demo Mode"}
-                        </button>
-                    </form>
+                    <div className="space-y-2">
+                        <form action={activateJobSeekerDemo}>
+                            <button
+                                type="submit"
+                                className={`w-full py-3 px-4 rounded-xl font-medium transition-all border ${demoSession?.enabled && demoSession.demo_view === "job_seeker"
+                                    ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                                    }`}
+                            >
+                                Aktiviere Jobsuche Demo
+                            </button>
+                        </form>
+                        <form action={activateJobProviderDemo}>
+                            <button
+                                type="submit"
+                                className={`w-full py-3 px-4 rounded-xl font-medium transition-all border ${demoSession?.enabled && demoSession.demo_view === "job_provider"
+                                    ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
+                                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                                    }`}
+                            >
+                                Aktiviere Jobanbieter Demo
+                            </button>
+                        </form>
+                        <form action={disableDemo}>
+                            <button
+                                type="submit"
+                                className="w-full py-3 px-4 rounded-xl font-medium transition-all border bg-rose-500/10 text-rose-200 border-rose-500/20 hover:bg-rose-500/20"
+                            >
+                                Deaktivieren
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 {/* Data Seeding */}
@@ -94,14 +130,13 @@ export default async function DemoModePage() {
                         </div>
                     </div>
 
-                    <form action={handleSeed}>
-                        <button
-                            type="submit"
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                        >
-                            Seed Demo Data
-                        </button>
-                    </form>
+                    <button
+                        type="button"
+                        disabled
+                        className="bg-slate-700/40 text-slate-400 px-4 py-2 rounded-lg text-sm font-medium border border-white/10 cursor-not-allowed"
+                    >
+                        Seed Demo Data (Disabled)
+                    </button>
                 </div>
             </div>
         </div>

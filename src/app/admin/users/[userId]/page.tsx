@@ -1,28 +1,28 @@
 import { requireCompleteProfile } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getAdminUser } from "@/lib/data/adminUsers";
 import { RoleBadge } from "../../components/RoleBadge";
-import { ArrowLeft, Mail, MapPin, Calendar, CheckCircle, XCircle, Shield } from "lucide-react";
+import { ArrowLeft, Mail, MapPin, Calendar, CheckCircle, Shield } from "lucide-react";
 import Link from "next/link";
 import { RemoveRoleButton } from "../../roles/RemoveRoleButton";
-import { AddRoleForm } from "../../roles/AddRoleForm";
+
+type UserRoleEntry = {
+    role: {
+        name: string;
+    };
+};
 
 export default async function UserDetailPage({ params }: { params: { userId: string } }) {
     await requireCompleteProfile();
-    const supabase = await supabaseServer();
     const { userId } = await params;
 
-    // Fetch profile with roles
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("*, roles:user_system_roles(role:system_roles(name))")
-        .eq("id", userId)
-        .single();
-
+    const { item: profile } = await getAdminUser(userId);
     if (!profile) return <div className="text-white">User not found</div>;
+
+    const roleEntries = (profile.roles ?? []).map((name) => ({ role: { name } })) as UserRoleEntry[];
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
-            <Link href="/admin/users" className="flex items-center text-slate-400 hover:text-white transition-colors">
+            <Link href="/staff/users" className="flex items-center text-slate-400 hover:text-white transition-colors">
                 <ArrowLeft size={16} className="mr-2" />
                 Back to Users
             </Link>
@@ -77,7 +77,7 @@ export default async function UserDetailPage({ params }: { params: { userId: str
 
                     <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
-                            {profile.roles?.length > 0 ? profile.roles.map((r: any) => (
+                            {roleEntries.length > 0 ? roleEntries.map((r) => (
                                 <div key={r.role.name} className="flex items-center gap-2 pr-2 bg-indigo-500/10 rounded-full border border-indigo-500/20">
                                     <div className="pl-2">
                                         <RoleBadge role={r.role.name} />
@@ -96,7 +96,7 @@ export default async function UserDetailPage({ params }: { params: { userId: str
                            But I can add a link to Roles page.
                         */}
                         <div className="mt-4 pt-4 border-t border-white/5">
-                            <Link href="/admin/roles" className="text-sm text-indigo-400 hover:text-indigo-300">
+                            <Link href="/staff/roles" className="text-sm text-indigo-400 hover:text-indigo-300">
                                 Manage Roles &rarr;
                             </Link>
                         </div>

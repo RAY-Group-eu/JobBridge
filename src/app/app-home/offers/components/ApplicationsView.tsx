@@ -43,12 +43,14 @@ export function ApplicationsView({ applications }: { applications: ApplicationWi
                             {app.message && (
                                 <div className="ml-11 p-3 bg-black/20 rounded-lg text-sm text-slate-300 italic border border-white/5 relative">
                                     <div className="absolute left-0 top-3 -ml-1.5 w-3 h-3 bg-black/20 rotate-45 border-l border-b border-white/5 text-transparent">.</div>
-                                    "{app.message}"
+                                    &quot;{app.message}&quot;
                                 </div>
                             )}
 
                             <div className="flex items-center gap-4 text-xs text-slate-500 mt-4 ml-11">
-                                <span className="flex items-center gap-1.5"><Clock size={12} /> {new Date(app.created_at).toLocaleDateString()}</span>
+                                <span className="flex items-center gap-1.5">
+                                    <Clock size={12} /> {new Date(app.created_at).toLocaleDateString("de-DE")}
+                                </span>
                                 <span className={`px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${app.status === 'accepted' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
                                         app.status === 'rejected' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
                                             'bg-blue-500/10 border-blue-500/30 text-blue-400'

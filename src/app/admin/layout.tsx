@@ -1,29 +1,18 @@
 import { requireCompleteProfile } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Users, Shield, ArrowLeft } from "lucide-react";
 import { AdminSidebar } from "./AdminSidebar";
+import { AdminGlobalSearch } from "./components/AdminGlobalSearch";
 
 export default async function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { profile, session } = await requireCompleteProfile();
-    const user = session.user;
+    const { systemRoles } = await requireCompleteProfile();
+    const hasStaffRole = systemRoles.some((role) => ["admin", "moderator", "analyst"].includes(role));
 
-    // Check if user has admin role
-    const supabase = await supabaseServer();
-    const { data: roleData } = await supabase
-        .from("user_system_roles")
-        .select("role:system_roles(name)")
-        .eq("user_id", user.id)
-        .single();
-
-    const hasRole = !!roleData; // Any system role qualifies as staff for now
-
-    if (!hasRole) {
+    if (!hasStaffRole) {
         redirect("/app-home");
     }
 
@@ -36,12 +25,15 @@ export default async function AdminLayout({
             <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
                 {/* Mobile Admin Header (Visible only on small screens) */}
                 <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-white/10">
-                    <span className="font-bold text-white">JobBridge Admin</span>
+                    <span className="font-bold text-white">JobBridge Staff</span>
                     <Link href="/app-home" className="text-sm text-slate-400">Exit</Link>
                 </header>
 
+                <div className="hidden md:flex items-center justify-end px-8 py-4 border-b border-white/5 bg-slate-950/40 backdrop-blur-md">
+                    <AdminGlobalSearch />
+                </div>
+
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                    {/* Optional: Breadcrumbs or Top Bar could go here */}
                     {children}
                 </div>
             </main>

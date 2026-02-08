@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import {
     LayoutDashboard,
     Users,
+    Briefcase,
     Shield,
     ArrowLeft,
-    Search,
     FileText,
     Flag,
     Settings,
-    Gift
+    Gift,
+    Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,13 +20,15 @@ export function AdminSidebar() {
     const pathname = usePathname();
 
     const navItems = [
-        { icon: LayoutDashboard, label: "Overview", href: "/admin" },
-        { icon: Users, label: "Users", href: "/admin/users" },
-        { icon: FileText, label: "Jobs", href: "/admin/jobs" }, // Assuming needed
-        { icon: Flag, label: "Moderation", href: "/admin/moderation" },
-        { icon: Gift, label: "Drops", href: "/admin/drops" },
-        { icon: Shield, label: "Roles", href: "/admin/roles" },
-        { icon: Settings, label: "Demo Mode", href: "/admin/demo" }, // Use Settings icon
+        { icon: LayoutDashboard, label: "Overview", href: "/staff" },
+        { icon: Users, label: "Users", href: "/staff/users" },
+        { icon: Briefcase, label: "Jobs", href: "/staff/jobs" },
+        { icon: FileText, label: "Applications", href: "/staff/applications" },
+        { icon: Flag, label: "Moderation", href: "/staff/moderation" },
+        { icon: Clock, label: "Activity", href: "/staff/activity" },
+        { icon: Gift, label: "Drops", href: "/staff/drops" },
+        { icon: Shield, label: "Roles", href: "/staff/roles" },
+        { icon: Settings, label: "Demo Mode", href: "/staff/demo" },
     ];
 
     return (
@@ -38,7 +41,7 @@ export function AdminSidebar() {
             {/* Nav Items (Icon Rail) */}
             <nav className="flex flex-col gap-4 w-full px-2">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+                    const isActive = pathname === item.href || (item.href !== "/staff" && pathname.startsWith(item.href));
                     return (
                         <Link
                             key={item.href}

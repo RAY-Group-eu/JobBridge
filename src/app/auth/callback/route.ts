@@ -10,31 +10,6 @@ export async function GET(request: NextRequest) {
     const next = requestUrl.searchParams.get("next") ?? "/onboarding";
 
     if (code) {
-        const cookieStore = request.cookies;
-        const supabase = createServerClient<Database>(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    get(name: string) {
-                        return cookieStore.get(name)?.value;
-                    },
-                    set(name: string, value: string, options: CookieOptions) {
-                        // Note: In a Route Handler, we use response.cookies.set or middleware. 
-                        // However, createServerClient needs a 'set' method for the auth helper to work.
-                        // With Next.js 15 App Router, we should be using the cookieStore from 'next/headers' if possible,
-                        // but in a Route Handler passing 'request' cookies and setting 'response' cookies is the way.
-                        // But we can't pass 'response' object into this closure easily before creating it.
-                        // The standard Supabase pattern for Next.js Route Handlers:
-                        // Create a temporary client to exchange code, then copy cookies to response.
-                        // Ref: https://supabase.com/docs/guides/auth/server-side/nextjs
-                    },
-                    remove(name: string, options: CookieOptions) {
-                    },
-                },
-            }
-        );
-
         // Creates a new Response to hold cookies
         const response = NextResponse.redirect(new URL(next, requestUrl.origin));
 
@@ -42,6 +17,9 @@ export async function GET(request: NextRequest) {
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
+                db: {
+                    schema: "public",
+                },
                 cookies: {
                     get(name: string) {
                         return request.cookies.get(name)?.value;

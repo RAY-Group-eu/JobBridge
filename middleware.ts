@@ -14,6 +14,9 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      db: {
+        schema: "public",
+      },
       cookies: {
         get(name: string) {
           return request.cookies.get(name)?.value;
@@ -62,6 +65,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtectedPath =
     path.startsWith("/admin") ||
+    path.startsWith("/staff") ||
     path.startsWith("/analytics") ||
     path.startsWith("/moderation");
 
@@ -80,9 +84,10 @@ export async function middleware(request: NextRequest) {
     const userRoles = (rolesData || []).map((r: any) => r.role?.name).filter(Boolean);
 
     let hasAccess = false;
+    const isStaff = userRoles.includes("admin") || userRoles.includes("moderator") || userRoles.includes("analyst");
 
-    if (path.startsWith("/admin")) {
-      hasAccess = userRoles.includes("admin");
+    if (path.startsWith("/admin") || path.startsWith("/staff")) {
+      hasAccess = isStaff;
     } else if (path.startsWith("/analytics")) {
       hasAccess = userRoles.includes("admin") || userRoles.includes("analyst");
     } else if (path.startsWith("/moderation")) {

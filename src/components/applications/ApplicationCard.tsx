@@ -27,9 +27,7 @@ export function ApplicationCard({ application }: { application: any }) {
                     <p className="text-sm text-slate-400">
                         Bewerbung für <span className="text-white font-medium">{application.job?.title}</span>
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                        {new Date(application.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-slate-500 mt-1">{new Date(application.created_at).toLocaleDateString("de-DE")}</p>
                 </div>
                 <div>
                     {application.status === 'submitted' && <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30">Offen</span>}

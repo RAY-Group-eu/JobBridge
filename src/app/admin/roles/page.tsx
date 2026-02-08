@@ -1,5 +1,5 @@
 import { requireCompleteProfile } from "@/lib/auth";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getAdminRoleAssignments } from "@/lib/data/adminRoles";
 import { RoleBadge } from "../components/RoleBadge";
 import { AddRoleForm } from "./AddRoleForm";
 import { RemoveRoleButton } from "./RemoveRoleButton";
@@ -7,18 +7,7 @@ import { Shield } from "lucide-react";
 
 export default async function RolesPage() {
     await requireCompleteProfile();
-    const supabase = await supabaseServer();
-
-    // Fetch all user assignments
-    // We join profiles and system_roles
-    const { data: assignments } = await supabase
-        .from("user_system_roles")
-        .select(`
-            created_at,
-            profile:profiles(id, full_name, email, city),
-            role:system_roles(name, description)
-        `)
-        .order("created_at", { ascending: false });
+    const { items: assignments, error } = await getAdminRoleAssignments();
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
@@ -38,6 +27,12 @@ export default async function RolesPage() {
                 <AddRoleForm />
             </div>
 
+            {error && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+                    <p className="text-sm text-rose-200">{error}</p>
+                </div>
+            )}
+
             {/* Roles List */}
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden">
                 <table className="w-full text-left bg-slate-900/50 rounded-2xl border-white/5 mt-0">
@@ -50,27 +45,27 @@ export default async function RolesPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {assignments?.map((item: any) => (
-                            <tr key={`${item.profile?.id}-${item.role?.name}`} className="hover:bg-white/5 transition-colors">
+                        {assignments.map((item) => (
+                            <tr key={`${item.user_id}-${item.role_name}-${item.created_at}`} className="hover:bg-white/5 transition-colors">
                                 <td className="px-6 py-4">
-                                    <div className="font-medium text-white">{item.profile?.full_name || "Unknown"}</div>
-                                    <div className="text-xs text-slate-500">{item.profile?.email}</div>
+                                    <div className="font-medium text-white">{item.full_name || "Unknown"}</div>
+                                    <div className="text-xs text-slate-500">{item.email || "No email"}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col gap-1 items-start">
-                                        <RoleBadge role={item.role?.name} />
-                                        <span className="text-[10px] text-slate-500">{item.role?.description}</span>
+                                        <RoleBadge role={item.role_name} />
+                                        <span className="text-[10px] text-slate-500">{item.role_description}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-slate-400">
                                     {new Date(item.created_at).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <RemoveRoleButton userId={item.profile?.id} role={item.role?.name} />
+                                    <RemoveRoleButton userId={item.user_id} role={item.role_name} />
                                 </td>
                             </tr>
                         ))}
-                        {(!assignments || assignments.length === 0) && (
+                        {assignments.length === 0 && (
                             <tr>
                                 <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
                                     No staff assignments found.

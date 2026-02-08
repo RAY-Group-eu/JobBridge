@@ -16,6 +16,9 @@ export async function supabaseServer() {
     url,
     anonKey,
     {
+      db: {
+        schema: "public",
+      },
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;

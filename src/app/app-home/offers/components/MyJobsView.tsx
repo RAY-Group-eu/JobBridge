@@ -48,7 +48,9 @@ export function MyJobsView({ jobs }: { jobs: JobRow[] }) {
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-slate-400">
-                                        <span className="flex items-center gap-1.5"><Clock size={14} /> Erstellt am {new Date(job.created_at).toLocaleDateString()}</span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock size={14} /> Erstellt am {new Date(job.created_at).toLocaleDateString("de-DE")}
+                                        </span>
                                         <span className="hidden sm:inline text-slate-600">•</span>
                                         <span className="text-slate-500">{job.wage_hourly} € / h</span>
                                     </div>

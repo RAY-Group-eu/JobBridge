@@ -1,4 +1,3 @@
-import { SystemRoleType } from "@/lib/types";
 import { Shield, Eye, Gavel } from "lucide-react";
 
 export function RoleBadge({ role }: { role: string }) {
