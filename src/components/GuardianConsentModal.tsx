@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
-import { createGuardianInvitation } from "@/app/actions/guardian";
+import { Modal } from "@/components/ui/Modal";
+import { createGuardianInvitation, getActiveGuardianInvitation } from "@/app/actions/guardian";
 import { Copy, X, CheckCircle, ShieldCheck } from "lucide-react";
 
 interface GuardianConsentModalProps {
@@ -14,12 +15,53 @@ export function GuardianConsentModal({ isOpen, onClose }: GuardianConsentModalPr
     const [step, setStep] = useState<"initial" | "generated">("initial");
     const [isLoading, setIsLoading] = useState(false);
     const [link, setLink] = useState("");
+    const [expiresAt, setExpiresAt] = useState<string | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
-    if (!isOpen) return null;
+    // Countdown logic
+    useEffect(() => {
+        if (!expiresAt) return;
 
-    const generateLink = async () => {
+        const updateTimeLeft = () => {
+            const now = new Date().getTime();
+            const expiry = new Date(expiresAt).getTime();
+            const diff = expiry - now;
+
+            if (diff <= 0) {
+                setTimeLeft("Abgelaufen");
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                setTimeLeft(`noch ${hours} Std. ${minutes} Min.`);
+            }
+        };
+
+        updateTimeLeft(); // Initial call
+        const interval = setInterval(updateTimeLeft, 60000); // Update every minute
+
+        return () => clearInterval(interval);
+    }, [expiresAt]); // Run when expiresAt changes
+
+    // Check for existing invitation on mount
+    useEffect(() => {
+        if (isOpen) {
+            setIsLoading(true);
+            getActiveGuardianInvitation().then(res => {
+                setIsLoading(false);
+                if (res.token) {
+                    const url = `${window.location.origin}/guardian/access?token=${res.token}`;
+                    setLink(url);
+                    setExpiresAt(res.expires_at || null);
+                    setStep("generated");
+                }
+                // If no active token, we stay in "initial" step, allowing user to read info/create later.
+            });
+        }
+    }, [isOpen]);
+
+    const fetchOrGenerateLink = async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -29,6 +71,7 @@ export function GuardianConsentModal({ isOpen, onClose }: GuardianConsentModalPr
             } else if (res.token) {
                 const url = `${window.location.origin}/guardian/access?token=${res.token}`;
                 setLink(url);
+                setExpiresAt(res.expires_at || null);
                 setStep("generated");
             }
         } catch (e) {
@@ -45,99 +88,95 @@ export function GuardianConsentModal({ isOpen, onClose }: GuardianConsentModalPr
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-                            <ShieldCheck className="w-5 h-5" />
-                        </div>
-                        <h2 className="text-lg font-semibold text-white">Jugendschutz & Datenschutz</h2>
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <ShieldCheck className="w-5 h-5" />
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <span className="font-semibold text-white">Jugendschutz & Datenschutz</span>
                 </div>
-
-                {/* Content */}
-                <div className="p-6">
-                    {step === "initial" ? (
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <span className="text-indigo-400 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-                                    </span>
-                                    <div>
-                                        <h3 className="text-white font-medium">Einverständnis erforderlich</h3>
-                                        <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-                                            Um deine Sicherheit zu gewährleisten und den gesetzlichen Anforderungen (DSGVO & Jugendschutz) zu entsprechen, benötigen wir vor deiner ersten Bewerbung eine einmalige Bestätigung durch deine Eltern.
-                                        </p>
-                                    </div>
+            }
+        >
+            <div className="space-y-6">
+                {step === "initial" ? (
+                    <>
+                        <div className="rounded-xl bg-slate-900/50 p-4 border border-slate-800">
+                            <div className="flex items-start gap-4">
+                                <div className="p-2 rounded-full bg-blue-500/10 text-blue-400 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
                                 </div>
-                            </div>
-
-                            {error && (
-                                <div className="text-xs text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">
-                                    {error}
+                                <div className="space-y-1">
+                                    <h3 className="text-white font-medium">Einverständnis erforderlich</h3>
+                                    <p className="text-sm text-slate-400 leading-relaxed">
+                                        Um deine Sicherheit zu gewährleisten und den gesetzlichen Anforderungen (DSGVO & Jugendschutz) zu entsprechen, benötigen wir vor deiner ersten Bewerbung eine einmalige Bestätigung durch deine Eltern.
+                                    </p>
                                 </div>
-                            )}
-
-                            <div className="pt-2">
-                                <ButtonPrimary
-                                    onClick={generateLink}
-                                    disabled={isLoading}
-                                    className="w-full justify-center"
-                                >
-                                    {isLoading ? "Link wird erstellt..." : "Link für Eltern erstellen"}
-                                </ButtonPrimary>
-                                <p className="text-center text-xs text-slate-500 mt-3">
-                                    Diesen Link kannst du an deine Eltern weiterleiten.
-                                </p>
                             </div>
                         </div>
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-medium text-indigo-400 uppercase tracking-wider">Dein Bestätigungslink</span>
-                                    <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">48H GÜLTIG</span>
+
+                        {error && (
+                            <div className="text-xs text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">
+                                {error}
+                            </div>
+                        )}
+
+                        <div>
+                            <ButtonPrimary
+                                onClick={fetchOrGenerateLink}
+                                disabled={isLoading}
+                                className="w-full justify-center py-6 text-base"
+                            >
+                                {isLoading ? "Wird geladen..." : "Link erstellen / anzeigen"}
+                            </ButtonPrimary>
+                            <p className="text-center text-xs text-slate-500 mt-3">
+                                Erstellt einen neuen Link oder zeigt den aktiven an.
+                            </p>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-400">
+                                Bitte sende den folgenden Link an deine Eltern. Sobald sie bestätigt haben, kannst du dich bewerben.
+                            </p>
+
+                            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Dein Bestätigungslink</span>
+                                    <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-bold tracking-wide">
+                                        {timeLeft || "GÜLTIG"}
+                                    </span>
                                 </div>
-                                <p className="text-xs text-slate-500 mb-3">
-                                    Sende diesen Link an deine Eltern.
-                                </p>
+
                                 <div className="flex gap-2">
-                                    <code className="flex-1 bg-black/50 rounded-lg px-3 py-2 text-sm text-slate-300 font-mono truncate border border-slate-800">
+                                    <div className="flex-1 bg-black/40 rounded-lg px-3 py-3 text-sm text-slate-300 font-mono truncate border border-slate-800/50 flex items-center">
                                         {link}
-                                    </code>
+                                    </div>
                                     <button
                                         onClick={copyToClipboard}
-                                        className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200 border ${copied
-                                                ? "bg-emerald-500 border-emerald-500 text-white"
-                                                : "bg-indigo-600 border-indigo-600 hover:bg-indigo-500 text-white"
+                                        className={`flex items-center justify-center px-4 rounded-lg transition-all duration-200 font-medium border ${copied
+                                            ? "bg-emerald-500 border-emerald-500 text-white"
+                                            : "bg-indigo-600 border-indigo-600 hover:bg-indigo-500 text-white"
                                             }`}
                                     >
                                         {copied ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                                     </button>
                                 </div>
                             </div>
-
-                            <div className="text-center">
-                                <button
-                                    onClick={onClose}
-                                    className="text-slate-400 hover:text-white text-sm transition-colors py-2"
-                                >
-                                    Schließen
-                                </button>
-                            </div>
                         </div>
-                    )}
-                </div>
+
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors font-medium border border-slate-700"
+                        >
+                            Schließen
+                        </button>
+                    </>
+                )}
             </div>
-        </div>
+        </Modal>
     );
 }

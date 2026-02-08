@@ -87,3 +87,32 @@ BEGIN
     RETURN jsonb_build_object('success', true);
 END;
 $$;
+
+-- 4. Function to Get Invitation Info (Without Redeeming)
+CREATE OR REPLACE FUNCTION get_guardian_invitation_info(token_input TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    invitation_record RECORD;
+    child_profile RECORD;
+BEGIN
+    -- Find valid invitation
+    SELECT * INTO invitation_record FROM guardian_invitations 
+    WHERE token = token_input AND status = 'active' AND expires_at > NOW();
+
+    IF invitation_record IS NULL THEN
+        RETURN jsonb_build_object('valid', false, 'error', 'Invalid or expired token');
+    END IF;
+
+    -- Get child profile details
+    SELECT full_name INTO child_profile FROM profiles WHERE id = invitation_record.child_id;
+
+    RETURN jsonb_build_object(
+        'valid', true, 
+        'child_name', child_profile.full_name,
+        'expires_at', invitation_record.expires_at
+    );
+END;
+$$;

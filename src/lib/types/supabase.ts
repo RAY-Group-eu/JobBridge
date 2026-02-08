@@ -140,6 +140,47 @@ export interface Database {
                 }
                 Relationships: []
             }
+            guardian_invitations: {
+                Row: {
+                    id: string
+                    child_id: string
+                    token: string
+                    status: "active" | "redeemed" | "expired" | "revoked"
+                    expires_at: string
+                    redeemed_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    child_id: string
+                    token: string
+                    status?: "active" | "redeemed" | "expired" | "revoked"
+                    expires_at: string
+                    redeemed_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    child_id?: string
+                    token?: string
+                    status?: "active" | "redeemed" | "expired" | "revoked"
+                    expires_at?: string
+                    redeemed_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "guardian_invitations_child_id_fkey"
+                        columns: ["child_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
             job_private_details: {
                 Row: {
                     address_street: string | null
@@ -711,6 +752,12 @@ export interface Database {
                 Returns: Json
             }
             redeem_guardian_invitation: {
+                Args: {
+                    token_input: string
+                }
+                Returns: Json
+            }
+            get_guardian_invitation_info: {
                 Args: {
                     token_input: string
                 }

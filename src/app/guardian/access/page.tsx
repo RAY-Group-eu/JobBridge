@@ -12,8 +12,20 @@ function GuardianAccessContent() {
     const token = searchParams.get("token");
     const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
+    const [childName, setChildName] = useState<string | null>(null);
 
-    // Initial check handled by UI state
+    // Fetch invitation info on mount
+    useState(() => {
+        if (token) {
+            supabaseBrowser
+                .rpc("get_guardian_invitation_info", { token_input: token })
+                .then(({ data, error }) => {
+                    if (data && (data as any).valid) {
+                        setChildName((data as any).child_name);
+                    }
+                });
+        }
+    });
 
     if (!token) {
         return (
@@ -56,6 +68,19 @@ function GuardianAccessContent() {
             </div>
 
             <div className="relative max-w-md w-full space-y-8 text-center z-10">
+                {/* Branding */}
+                <div className="flex justify-center mb-6">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 backdrop-blur-md">
+                        <div className="w-6 h-6 bg-indigo-600 rounded-lg flex items-center justify-center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
+                                <path d="M3 9.5L12 4L21 9.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M19 13V19.4C19 19.7314 18.7314 20 18.4 20H5.6C5.26863 20 5 19.7314 5 19.4V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </div>
+                        <span className="font-bold tracking-tight text-sm">JobBridge</span>
+                    </div>
+                </div>
+
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
                         <ShieldCheck className="w-8 h-8 text-white" />
@@ -63,7 +88,7 @@ function GuardianAccessContent() {
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight mb-2">Account bestätigen</h1>
                         <p className="text-slate-400">
-                            Übernehme Verantwortung für das JobBridge-Konto deines Kindes.
+                            Übernehme Verantwortung für das JobBridge-Konto deines Kindes <span className="text-white font-medium inline-block min-w-[50px]">{childName || "..."}</span>
                         </p>
                     </div>
                 </div>

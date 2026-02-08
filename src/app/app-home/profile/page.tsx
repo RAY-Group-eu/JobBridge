@@ -60,7 +60,7 @@ export default async function ProfilePage() {
             ? (isVerifiedBadge ? "Geprüfter Anbieter" : (profile.provider_verification_status === "pending" ? "Prüfung läuft" : "Noch nicht geprüft"))
             : (profile.guardian_status === "linked"
                 ? "Eltern bestätigt"
-                : (profile.guardian_status === "pending" ? "Elternbestätigung ausstehend" : "Elternbestätigung erforderlich"));
+                : (profile.guardian_status === "pending" ? "Bestätigung ausstehend" : "Bestätigung erforderlich"));
 
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8 md:px-6">

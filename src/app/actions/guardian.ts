@@ -18,17 +18,16 @@ export async function createGuardianInvitation() {
     // Check for existing active invitation
     const { data: existing } = await supabase
         .from("guardian_invitations")
-        .select("token")
+        .select("token, expires_at")
         .eq("child_id", user.id)
         .eq("status", "active")
         .gt("expires_at", new Date().toISOString())
         .single();
 
     if (existing) {
-        // Return existing valid token if one exists, to avoid spamming DB
-        // In a real app we might want to regenerate or have a "resend" logic, 
-        // but for this MVP, reusing valid token is fine.
-        return { success: true, token: existing.token };
+        // Ensure status is pending even if reusing token
+        await supabase.from("profiles").update({ guardian_status: "pending" }).eq("id", user.id);
+        return { success: true, token: existing.token, expires_at: existing.expires_at };
     }
 
     const token = uuidv4();
@@ -47,5 +46,29 @@ export async function createGuardianInvitation() {
         return { error: "Einladungslink konnte nicht erstellt werden." };
     }
 
-    return { success: true, token };
+    // Update profile status
+    await supabase.from("profiles").update({ guardian_status: "pending" }).eq("id", user.id);
+
+    return { success: true, token, expires_at: expiresAt };
+}
+
+export async function getActiveGuardianInvitation() {
+    const supabase = await supabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nicht authentifiziert" };
+
+    const { data: existing } = await supabase
+        .from("guardian_invitations")
+        .select("token, expires_at")
+        .eq("child_id", user.id)
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString())
+        .single();
+
+    if (existing) {
+        return { success: true, token: existing.token, expires_at: existing.expires_at };
+    }
+
+    return { success: false };
 }
