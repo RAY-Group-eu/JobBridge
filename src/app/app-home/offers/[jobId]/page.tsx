@@ -1,10 +1,10 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { getJobByIdService } from "@/lib/services/jobs";
-import { getDemoStatus } from "@/lib/demo";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, MapPin, Banknote } from "lucide-react";
 import { Database } from "@/lib/types/supabase";
+import { getEffectiveView } from "@/lib/dal/jobbridge";
 
 type JobRow = Database['public']['Tables']['jobs']['Row'];
 
@@ -12,11 +12,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     const { jobId } = await params;
     const { profile } = await requireCompleteProfile();
 
-    if (profile.user_type !== "company") {
+    const viewRes = await getEffectiveView({ userId: profile.id, baseUserType: profile.user_type });
+    const viewRole = viewRes.ok ? viewRes.data.viewRole : (profile.account_type ?? "job_seeker");
+    const isDemo = viewRes.ok ? (viewRes.data.source === "demo") : false;
+
+    if (viewRole !== "job_provider") {
         redirect("/app-home/jobs");
     }
 
-    const { isEnabled: isDemo } = await getDemoStatus(profile.id);
     const { data, error } = await getJobByIdService(jobId, isDemo);
 
     if (error || !data) {

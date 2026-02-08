@@ -5,6 +5,8 @@ import { Loader2, Save, MapPin } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { useActionState, useState } from "react";
 import { cn } from "@/lib/utils";
+import type { ErrorInfo } from "@/lib/types/jobbridge";
+import Link from "next/link";
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -20,13 +22,27 @@ function SubmitButton() {
     );
 }
 
-export function CreateJobForm({ userId, marketId, defaultLocation }: { userId: string, marketId: string, defaultLocation?: any }) {
-    const [state, formAction] = useActionState(createJob, null);
+type CreateJobFormState =
+    | null
+    | { status: "error"; error: ErrorInfo; debug?: Record<string, unknown> }
+    | { status: "partial"; jobId: string; error: ErrorInfo; debug?: Record<string, unknown> };
+
+type DefaultLocation = {
+    id: string;
+    public_label: string | null;
+    address_line1: string | null;
+    city: string | null;
+    postal_code: string | null;
+};
+
+export function CreateJobForm({ defaultLocation }: { defaultLocation?: DefaultLocation | null }) {
+    const [state, formAction] = useActionState<CreateJobFormState, FormData>(createJob, null);
     const [useCustomLocation, setUseCustomLocation] = useState(!defaultLocation);
 
     return (
         <form action={formAction} className="space-y-6">
             <input type="hidden" name="use_default_location" value={(!useCustomLocation && defaultLocation) ? "true" : "false"} />
+            {state?.status === "partial" && <input type="hidden" name="job_id" value={state.jobId} />}
 
             <div className="space-y-4">
                 <div>
@@ -104,9 +120,59 @@ export function CreateJobForm({ userId, marketId, defaultLocation }: { userId: s
                 </div>
             </div>
 
-            {state?.error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                    {state.error}
+            {state?.status === "error" && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm">
+                    <div className="font-semibold">Fehler</div>
+                    <div className="mt-1 font-mono text-xs break-words">
+                        {state.error.code ? `${state.error.code}: ` : ""}{state.error.message}
+                    </div>
+                    {process.env.NEXT_PUBLIC_SHOW_DEBUG_QUERY_PANEL === "true" && state.debug && (
+                        <details className="mt-2 text-xs text-slate-300">
+                            <summary className="cursor-pointer select-none text-slate-400 hover:text-slate-200">Debug</summary>
+                            <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-white/5 bg-black/30 p-2 text-[10px] text-slate-300">
+                                {JSON.stringify(state.debug, null, 2)}
+                            </pre>
+                        </details>
+                    )}
+                </div>
+            )}
+
+            {state?.status === "partial" && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
+                    <div className="font-semibold">Job erstellt, aber unvollstaendig</div>
+                    <div className="mt-1 text-sm text-amber-200/90">
+                        Der Job wurde erstellt, aber die privaten Details konnten nicht gespeichert werden.
+                    </div>
+                    <div className="mt-2 font-mono text-xs break-words text-amber-200/80">
+                        Job ID: {state.jobId}
+                        <br />
+                        {state.error.code ? `${state.error.code}: ` : ""}{state.error.message}
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <button
+                            type="submit"
+                            name="intent"
+                            value="retry_private_details"
+                            className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/25 text-amber-100 border border-amber-500/30 text-sm font-semibold"
+                        >
+                            Private Details erneut speichern
+                        </button>
+                        <Link
+                            href="/app-home/offers"
+                            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-sm font-semibold text-center"
+                        >
+                            Weiter zu Meine Jobs
+                        </Link>
+                    </div>
+
+                    {process.env.NEXT_PUBLIC_SHOW_DEBUG_QUERY_PANEL === "true" && state.debug && (
+                        <details className="mt-3 text-xs text-slate-300">
+                            <summary className="cursor-pointer select-none text-slate-400 hover:text-slate-200">Debug</summary>
+                            <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-white/5 bg-black/30 p-2 text-[10px] text-slate-300">
+                                {JSON.stringify(state.debug, null, 2)}
+                            </pre>
+                        </details>
+                    )}
                 </div>
             )}
 

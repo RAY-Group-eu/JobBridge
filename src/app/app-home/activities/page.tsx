@@ -1,8 +1,8 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { Activity } from "lucide-react";
 import { ApplicationsView } from "../offers/components/ApplicationsView";
 import { Database } from "@/lib/types/supabase";
+import { getEffectiveView } from "@/lib/dal/jobbridge";
 
 type ApplicationWithRelations = Database['public']['Tables']['applications']['Row'] & {
     job: { title: string } | null;
@@ -11,33 +11,40 @@ type ApplicationWithRelations = Database['public']['Tables']['applications']['Ro
 
 export default async function ActivitiesPage() {
     const { profile } = await requireCompleteProfile();
-    const isProvider = profile.user_type === "company";
+    const viewRes = await getEffectiveView({ userId: profile.id, baseUserType: profile.user_type });
+    const viewRole = viewRes.ok ? viewRes.data.viewRole : (profile.account_type ?? "job_seeker");
+    const source = viewRes.ok ? viewRes.data.source : "live";
+
+    const isProvider = viewRole === "job_provider";
     const supabase = await supabaseServer();
 
     let applications: ApplicationWithRelations[] = [];
 
+    const jobsTable: "jobs" | "demo_jobs" = source === "demo" ? "demo_jobs" : "jobs";
+    const appsTable: "applications" | "demo_applications" = source === "demo" ? "demo_applications" : "applications";
+
     if (isProvider) {
         // Fetch provider's received applications
-        const { data: myJobs } = await supabase.from("jobs").select("id").eq("posted_by", profile.id);
-        const jobIds = myJobs?.map(j => j.id) || [];
+        const { data: myJobs } = await supabase.from(jobsTable).select("id").eq("posted_by", profile.id);
+        const jobIds = (myJobs ?? []).map((j) => j.id);
 
         if (jobIds.length > 0) {
             const { data: apps } = await supabase
-                .from("applications")
-                .select("*, job:jobs(title), applicant:profiles!applicant_id(full_name, city)")
+                .from(appsTable)
+                .select(`*, job:${jobsTable}(title), applicant:profiles!applicant_id(full_name, city)`)
                 .in("job_id", jobIds)
                 .order("created_at", { ascending: false });
 
-            if (apps) applications = apps as unknown as ApplicationWithRelations[];
+            applications = (apps ?? []) as unknown as ApplicationWithRelations[];
         }
     } else {
         // Fetch seeker's sent applications
         const { data: apps } = await supabase
-            .from("applications")
-            .select("*, job:jobs(title), applicant:profiles!applicant_id(full_name, city)")
+            .from(appsTable)
+            .select(`*, job:${jobsTable}(title), applicant:profiles!applicant_id(full_name, city)`)
             .eq("user_id", profile.id)
             .order("created_at", { ascending: false });
-        if (apps) applications = apps as unknown as ApplicationWithRelations[];
+        applications = (apps ?? []) as unknown as ApplicationWithRelations[];
     }
 
     return (

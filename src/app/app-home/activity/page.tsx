@@ -1,31 +1,36 @@
-
 import { requireCompleteProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import Link from "next/link";
-import { ButtonPrimary } from "@/components/ui/ButtonPrimary"; // Optional usage
+import { getEffectiveView } from "@/lib/dal/jobbridge";
+import type { Database } from "@/lib/types/supabase";
 
 export default async function ActivityPage() {
     const { profile } = await requireCompleteProfile();
 
-    if (profile.user_type !== "youth") {
+    const viewRes = await getEffectiveView({ userId: profile.id, baseUserType: profile.user_type });
+    const viewRole = viewRes.ok ? viewRes.data.viewRole : (profile.account_type ?? "job_seeker");
+    const source = viewRes.ok ? viewRes.data.source : "live";
+
+    if (viewRole !== "job_seeker") {
         redirect("/app-home/offers");
     }
 
     const supabase = await supabaseServer();
-    const { data: applications } = await supabase
-        .from("applications")
-        .select(`
-    *,
-    job: jobs(
-        title,
-        description,
-        status
-    )
-        `)
+    const appsTable: "applications" | "demo_applications" = source === "demo" ? "demo_applications" : "applications";
+    const jobsRelation: "jobs" | "demo_jobs" = source === "demo" ? "demo_jobs" : "jobs";
+
+    type ActivityApp = Database["public"]["Tables"]["applications"]["Row"] & {
+        job: { title: string; description: string; status: Database["public"]["Enums"]["job_status"] } | null;
+    };
+
+    const { data } = await supabase
+        .from(appsTable)
+        .select(`*, job:${jobsRelation}(title, description, status)`)
         .eq("user_id", profile.id)
-        .order("created_at", { ascending: false })
-        .returns<any[]>(); // Temporary loose typing to bypass inference issues, or verify explicit Application[] type if joined
+        .order("created_at", { ascending: false });
+
+    const applications = (data ?? []) as unknown as ActivityApp[];
 
     // Calculate stats
     const total = applications?.length || 0;
@@ -66,7 +71,7 @@ export default async function ActivityPage() {
                     </div>
                 ) : (
                     <div className="grid gap-4">
-                        {applications.map((app: any) => (
+                        {applications.map((app) => (
                             <div key={app.id} className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm hover:bg-white/8 transition-colors">
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
@@ -101,4 +106,3 @@ export default async function ActivityPage() {
         </div>
     );
 }
-

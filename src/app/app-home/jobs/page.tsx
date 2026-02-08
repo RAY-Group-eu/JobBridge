@@ -1,9 +1,9 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ApplyButton } from "@/components/jobs/ApplyButton";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { getDemoStatus } from "@/lib/demo";
 import { Database } from "@/lib/types/supabase";
+import { fetchJobs, getEffectiveView } from "@/lib/dal/jobbridge";
+import { QueryDebugPanel } from "@/components/debug/QueryDebugPanel";
 
 type JobRow = Database['public']['Tables']['jobs']['Row'] & {
     market_name?: string | null;  // RPC or Join often adds extra fields
@@ -14,44 +14,47 @@ type JobRow = Database['public']['Tables']['jobs']['Row'] & {
 export default async function JobsPage() {
     const { profile } = await requireCompleteProfile();
 
-    // Redirect logic moved to RoleGuard in layout.tsx
-    // if (profile.account_type !== "job_seeker") { ... }
-
-    const isVerified = !!profile.is_verified;
-    const { isEnabled: isDemo } = await getDemoStatus(profile.id);
-
-    const supabase = await supabaseServer();
-    let jobs: JobRow[] = [];
-
-    if (isDemo) {
-        const { data } = await supabase.from("demo_jobs").select("*").eq("status", "open");
-        // demo_jobs lacks some calculated fields, but compatible enough base
-        jobs = (data as unknown as JobRow[]) || [];
-    } else {
-        // Real Mode: Use RPC
-        const { data, error } = await supabase.rpc("get_jobs_feed", {
-            p_market_id: profile.market_id!,
-            p_user_lat: null, // TODO: Get from geo-location if available
-            p_user_lng: null
-        });
-
-        if (!error && data) {
-            jobs = data as JobRow[]; // RPC returns any[], cast needed or fix RPC type in generator
-        } else {
-            // Fallback if RPC fails or returns empty
-            const { data: fallback } = await supabase
-                .from("jobs")
-                .select("*, market:regions_live(display_name)")
-                .eq("status", "open")
-                .order("created_at", { ascending: false });
-
-            // Fallback mapper or just use as is if types overlap close enough
-            jobs = (fallback as unknown as JobRow[]) || [];
-        }
+    const viewRes = await getEffectiveView({ userId: profile.id, baseUserType: profile.user_type });
+    if (!viewRes.ok) {
+        return (
+            <div className="container mx-auto py-12 px-4 md:px-6">
+                <div className="mx-auto max-w-4xl space-y-6">
+                    <h1 className="text-3xl font-bold tracking-tight text-white">Finde deinen Job</h1>
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-red-200">
+                        <p className="font-semibold">Fehler beim Bestimmen der Datenquelle/Rolle</p>
+                        <p className="mt-2 text-sm font-mono">
+                            {viewRes.error.code ? `${viewRes.error.code}: ` : ""}{viewRes.error.message}
+                        </p>
+                    </div>
+                    <QueryDebugPanel
+                        title="Jobs Feed Debug"
+                        summary={{ source: "unknown", role: "unknown" }}
+                        debug={viewRes.debug}
+                        error={viewRes.error}
+                    />
+                </div>
+            </div>
+        );
     }
 
-    // Debug: Log to server console
-    console.log(`[JobsPage] Demo: ${isDemo}, Jobs: ${jobs.length}, Market: ${profile.market_id}`);
+    const view = viewRes.data;
+    if (view.viewRole === "job_provider") {
+        redirect("/app-home/offers");
+    }
+
+    const isVerified = !!profile.is_verified;
+
+    const jobsRes = await fetchJobs({
+        mode: "feed",
+        view,
+        userId: profile.id,
+        marketId: profile.market_id,
+        status: "open",
+        limit: 50,
+        offset: 0,
+    });
+
+    const jobs: JobRow[] = jobsRes.ok ? (jobsRes.data as unknown as JobRow[]) : [];
 
     return (
         <div className="container mx-auto py-12 px-4 md:px-6">
@@ -63,17 +66,34 @@ export default async function JobsPage() {
                     <p className="text-slate-400">Hier findest du aktuelle Taschengeldjobs in deiner Nähe.</p>
                 </div>
 
-                {(!jobs || jobs.length === 0) ? (
+                {!jobsRes.ok ? (
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-12 text-center backdrop-blur-sm">
+                        <p className="text-red-200 font-semibold">Jobs konnten nicht geladen werden.</p>
+                        <p className="mt-2 text-xs text-red-200/80 font-mono break-words">
+                            {jobsRes.error.code ? `${jobsRes.error.code}: ` : ""}{jobsRes.error.message}
+                        </p>
+                        <QueryDebugPanel
+                            title="Jobs Feed Debug"
+                            summary={{ source: view.source, role: view.viewRole, status: "open", market_id: profile.market_id ?? "null" }}
+                            debug={jobsRes.debug}
+                            error={jobsRes.error}
+                        />
+                    </div>
+                ) : (!jobs || jobs.length === 0) ? (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-sm">
                         <p className="text-slate-300">Aktuell sind keine neuen Jobs verfügbar.</p>
                         <div className="mt-4 text-[10px] text-slate-600 font-mono">
                             Debug: {profile.market_id?.slice(0, 8)} | Joined: {profile.created_at?.slice(0, 10)}
                         </div>
+                        <QueryDebugPanel
+                            title="Jobs Feed Debug"
+                            summary={{ source: view.source, role: view.viewRole, status: "open", market_id: profile.market_id ?? "null" }}
+                            debug={jobsRes.debug}
+                        />
                     </div>
                 ) : (
                     <div className="grid gap-4">
                         {jobs.map((job) => {
-                            const isPrimary = job.market_id === profile.market_id;
                             return (
                                 <div key={job.id} className="relative group">
                                     <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm hover:bg-white/8 transition-colors">
@@ -96,7 +116,7 @@ export default async function JobsPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            {isDemo && <span className="text-[10px] border border-amber-500/50 text-amber-500 px-1 rounded">TEST</span>}
+                                            {view.source === "demo" && <span className="text-[10px] border border-amber-500/50 text-amber-500 px-1 rounded">TEST</span>}
                                         </div>
 
                                         <p className="text-slate-400 mb-4 line-clamp-3 text-sm">{job.description}</p>

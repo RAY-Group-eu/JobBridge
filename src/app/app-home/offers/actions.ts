@@ -4,8 +4,9 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getDemoStatus } from "@/lib/demo";
-import { createJobService } from "@/lib/services/jobs";
+import { createJob as createJobDAL, getEffectiveView, retrySaveJobPrivateDetails } from "@/lib/dal/jobbridge";
+import type { ErrorInfo } from "@/lib/types/jobbridge";
+import type { UserType } from "@/lib/types";
 
 const createJobSchema = z.object({
     title: z.string().min(5, "Titel muss mindestens 5 Zeichen lang sein."),
@@ -16,56 +17,87 @@ const createJobSchema = z.object({
     lng: z.string().optional(),
 });
 
-export async function createJob(prevState: any, formData: FormData) {
+type CreateJobActionState =
+    | null
+    | { status: "error"; error: ErrorInfo; debug?: Record<string, unknown> }
+    | { status: "partial"; jobId: string; error: ErrorInfo; debug?: Record<string, unknown> };
+
+export async function createJob(_prevState: CreateJobActionState, formData: FormData) {
     const supabase = await supabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { error: "Nicht authentifiziert" };
+        const state: CreateJobActionState = { status: "error", error: { message: "Nicht authentifiziert" } };
+        return state;
     }
 
-    const { isEnabled: isDemo } = await getDemoStatus(user.id);
+    const intent = (formData.get("intent") as string | null) ?? "create";
+    const existingJobId = (formData.get("job_id") as string | null) ?? null;
 
     // Get User Profile for Market ID
-    // Get User Profile for Market ID
-    const { data: profile } = await (supabase as any).from("profiles").select("market_id").eq("id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("market_id, user_type").eq("id", user.id).single();
 
     let marketId = profile?.market_id;
 
     if (!marketId) {
         // Fallback: Fetch "Rheinbach" market
-        const { data: defaultMarket } = await (supabase as any).from("markets").select("id").ilike("name", "%Rheinbach%").single();
-        marketId = defaultMarket?.id;
+        const { data: defaultMarket } = await supabase.from("markets" as never).select("id").ilike("name", "%Rheinbach%").maybeSingle();
+        marketId = (defaultMarket as unknown as { id?: string } | null)?.id;
     }
 
     if (!marketId) {
         // Ultimate fallback if even DB fetch fails (should not happen in prod)
-        return { error: "Systemfehler: Kein Markt zuweisbar." };
+        const state: CreateJobActionState = { status: "error", error: { message: "Systemfehler: Kein Markt zuweisbar." } };
+        return state;
+    }
+
+    const baseUserType = (profile?.user_type ?? null) as unknown as UserType | null;
+    const viewRes = await getEffectiveView({ userId: user.id, baseUserType });
+    if (!viewRes.ok) {
+        const state: CreateJobActionState = { status: "error", error: viewRes.error, debug: viewRes.debug };
+        return state;
+    }
+
+    const view = viewRes.data;
+    const isDemo = view.source === "demo";
+
+    if (view.viewRole !== "job_provider") {
+        const state: CreateJobActionState = { status: "error", error: { message: "Nicht berechtigt: Nur Jobanbieter können Jobs erstellen." } };
+        return state;
     }
 
     const useDefault = formData.get("use_default_location") === "true";
     let addressFull = formData.get("address_full") as string;
-    let locationId = null;
+    let locationId: string | null = null;
     let publicLabel = isDemo ? "[DEMO] Rheinbach" : "Rheinbach (Zentrum)"; // Fallback
 
     if (useDefault) {
         // Fetch default location
-        const { data: defLoc } = await (supabase as any).from("provider_locations")
-            .select("*")
+        const { data: defLocRaw } = await supabase.from("provider_locations" as never)
+            .select("id, address_line1, postal_code, city, public_label")
             .eq("provider_id", user.id)
             .eq("is_default", true)
-            .single();
+            .maybeSingle();
+        const defLoc = defLocRaw as unknown as {
+            id: string;
+            address_line1: string;
+            postal_code: string;
+            city: string;
+            public_label: string | null;
+        } | null;
 
         if (defLoc) {
             addressFull = `${defLoc.address_line1}, ${defLoc.postal_code} ${defLoc.city}`;
             locationId = defLoc.id;
             publicLabel = defLoc.public_label || publicLabel;
         } else {
-            return { error: "Kein Standard-Ort gefunden. Bitte Adresse eingeben." };
+            const state: CreateJobActionState = { status: "error", error: { message: "Kein Standard-Ort gefunden. Bitte Adresse eingeben." } };
+            return state;
         }
     } else {
         if (!addressFull || addressFull.length < 5) {
-            return { error: "Bitte gib eine Adresse ein oder wähle Standard-Ort." };
+            const state: CreateJobActionState = { status: "error", error: { message: "Bitte gib eine Adresse ein oder wähle Standard-Ort." } };
+            return state;
         }
     }
 
@@ -81,18 +113,45 @@ export async function createJob(prevState: any, formData: FormData) {
     const validated = createJobSchema.safeParse(rawData);
 
     if (!validated.success) {
-        return { error: validated.error.issues[0].message };
+        const state: CreateJobActionState = { status: "error", error: { message: validated.error.issues[0].message } };
+        return state;
     }
 
-    // Insert Job via Service
-    const { error: serviceError } = await createJobService(
-        user.id,
-        {
+    const privateDetails = {
+        address_full: validated.data.address_full || null,
+        private_lat: 50.6255,
+        private_lng: 6.9455,
+        notes: "Private Access Only",
+        location_id: locationId
+    };
+
+    // Retry-only path: job already exists, only (re)save private details.
+    if (intent === "retry_private_details") {
+        if (!existingJobId) {
+            const state: CreateJobActionState = { status: "error", error: { message: "Fehlender job_id für Retry." } };
+            return state;
+        }
+
+        const retryRes = await retrySaveJobPrivateDetails({ jobId: existingJobId, privateDetails });
+        if (!retryRes.ok) {
+            const state: CreateJobActionState = { status: "partial", jobId: existingJobId, error: retryRes.error, debug: retryRes.debug };
+            return state;
+        }
+
+        revalidatePath("/app-home/offers");
+        revalidatePath("/app-home/jobs");
+        redirect("/app-home/offers");
+    }
+
+    const res = await createJobDAL({
+        view,
+        userId: user.id,
+        job: {
             posted_by: user.id,
             market_id: marketId,
             title: validated.data.title,
             description: validated.data.description,
-            wage_hourly: (validated.data as any).wage || 12.00,
+            wage_hourly: validated.data.wage ?? 12.00,
             status: "open",
             category: "other",
             public_location_label: publicLabel,
@@ -100,20 +159,17 @@ export async function createJob(prevState: any, formData: FormData) {
             public_lng: 6.95,
             address_reveal_policy: "after_apply"
         },
-        // Private Details
-        {
-            address_full: validated.data.address_full || null,
-            private_lat: 50.6255,
-            private_lng: 6.9455,
-            notes: "Private Access Only",
-            location_id: locationId
-        },
-        isDemo
-    );
+        privateDetails,
+    });
 
-    if (serviceError) {
-        console.error("Create Job Error:", serviceError);
-        return { error: "Fehler beim Erstellen des Inserats." };
+    if (!res.ok) {
+        const state: CreateJobActionState = { status: "error", error: res.error, debug: res.debug };
+        return state;
+    }
+
+    if (res.data.outcome === "partial") {
+        const state: CreateJobActionState = { status: "partial", jobId: res.data.jobId, error: res.data.privateError, debug: res.debug };
+        return state;
     }
 
     revalidatePath("/app-home/offers");

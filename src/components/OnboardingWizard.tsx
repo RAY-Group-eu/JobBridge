@@ -105,24 +105,36 @@ export function OnboardingWizard({
   const checkSessionAfterEmailConfirm = useCallback(async () => {
     try {
       setEmailStatus(null);
-      // Force refresh session from server to get latest confirmed_at
-      const { data: { session }, error: sessionError } = await supabaseBrowser.auth.refreshSession();
-      if (sessionError || !session) {
-        // Fallback if refresh fails (e.g. no session yet)
-        const { data: userData } = await supabaseBrowser.auth.getUser();
-        if (!userData.user) {
-          setEmailConfirmed(false);
-          setEmailStatus("Keine aktive Sitzung gefunden. Bitte Link in E-Mail nutzen.");
-          return false;
-        }
+      // Don't try to refresh if there is no session yet (common right after sign-up).
+      const {
+        data: { session: existingSession },
+      } = await supabaseBrowser.auth.getSession();
+
+      if (!existingSession) {
+        setEmailConfirmed(false);
+        setEmailStatus("Keine aktive Sitzung gefunden. Bitte Link in E-Mail nutzen.");
+        return false;
       }
 
-      const { data: userData } = await supabaseBrowser.auth.getUser();
+      // Try to refresh tokens/user state, but tolerate missing/invalid refresh tokens.
+      // We'll still fetch the user below to determine confirmation state.
+      try {
+        await supabaseBrowser.auth.refreshSession();
+      } catch {
+        // ignore
+      }
+
+      const { data: userData, error: userError } = await supabaseBrowser.auth.getUser();
       const user = userData?.user;
+      if (userError || !user) {
+        setEmailConfirmed(false);
+        setEmailStatus("Keine aktive Sitzung gefunden. Bitte Link in E-Mail nutzen.");
+        return false;
+      }
 
-      const isConfirmed = Boolean(user?.email_confirmed_at);
+      const isConfirmed = Boolean(user.email_confirmed_at);
 
-      if (!user || !isConfirmed) {
+      if (!isConfirmed) {
         setEmailConfirmed(false);
         // Do not set error immediately if we are just polling/checking, 
         // but if triggered by user action (handled in wrapper) we might wants feedback.
@@ -175,7 +187,11 @@ export function OnboardingWizard({
       }
       return true;
     } catch (err) {
-      console.error("Fehler beim Prüfen der Session:", err);
+      const msg = getErrorMessage(err, "");
+      // This can happen if cookies contain a stale/invalid refresh token; treat as "no session" UX.
+      if (!msg.includes("Invalid Refresh Token") && !msg.includes("Refresh Token")) {
+        console.error("Fehler beim Prüfen der Session:", err);
+      }
       setEmailStatus("Prüfung fehlgeschlagen. Bitte später erneut versuchen.");
       return false;
     }

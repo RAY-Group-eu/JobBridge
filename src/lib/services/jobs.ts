@@ -109,24 +109,35 @@ export async function createJobService(
 
         if (isDemo) {
             jobData = await createDemoJob(supabase, jobParams);
-            // Demo private details not strictly requested to be split but good practice?
-            // User said "job_private_details vs demo_job_private_details (falls vorhanden)"
-            // Assuming demo_job_private_details might not exist or be used yet.
-            // If it doesn't exist, we skip or use a demo table if we had one.
-            // For now, let's assume no private details for demo or strict separation implies we need it.
-            // Actually, we don't have a specific demo_job_private_details table in the migration dumps I saw (only demo_jobs, demo_applications).
-            // So we might skip private details for demo for now, or just log constraint.
+            // Demo logic remains separate as per plan
         } else {
-            jobData = await createRealJob(supabase, jobParams);
+            // Updated to use ATOMIC RPC
+            const { data, error } = await supabase.rpc("create_job_atomic", {
+                p_market_id: jobParams.market_id,
+                p_title: jobParams.title,
+                p_description: jobParams.description,
+                p_wage_hourly: jobParams.wage_hourly,
+                p_category: jobParams.category,
+                p_address_reveal_policy: jobParams.address_reveal_policy || 'after_apply',
+                p_public_location_label: jobParams.public_location_label || "",
+                p_public_lat: jobParams.public_lat || null,
+                p_public_lng: jobParams.public_lng || null,
+                // Private Details
+                p_address_full: privateParams?.address_full || null,
+                p_private_lat: privateParams?.private_lat || null,
+                p_private_lng: privateParams?.private_lng || null,
+                p_notes: privateParams?.notes || null,
+                p_location_id: privateParams?.location_id || null
+            });
 
-            if (privateParams) {
-                await createRealJobPrivateDetails(supabase, jobData.id, privateParams);
-            }
+            if (error) throw error;
+            jobData = data;
         }
 
         return { data: jobData };
 
     } catch (error: any) {
+        console.error("Create Job Failed:", error);
         return { error: error.message || "Failed to create job" };
     }
 }

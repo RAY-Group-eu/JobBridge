@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/lib/types";
 
 export async function middleware(request: NextRequest) {
@@ -18,41 +18,25 @@ export async function middleware(request: NextRequest) {
         schema: "public",
       },
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          // Request cookies don't support maxAge/expires etc. in the same way response cookies do 
-          // but we want to update the value so the client sees it for this request.
-          request.cookies.set({
-            name,
-            value,
+        setAll(cookiesToSet) {
+          // Keep request cookies in sync so downstream middleware/handlers see latest auth.
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set({ name, value });
           });
+
+          // Re-create the response once, then apply all cookie mutations.
+          // Important: don't recreate the response per-cookie, or earlier cookie writes get lost.
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: "",
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set({ name, value, ...options });
           });
         },
       },

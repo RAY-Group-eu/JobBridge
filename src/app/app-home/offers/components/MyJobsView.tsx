@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { Clock, ArrowRight, Briefcase, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Database } from "@/lib/types/supabase";
+import type { JobsListItem } from "@/lib/types/jobbridge";
 
-type JobRow = Database['public']['Tables']['jobs']['Row'];
-
-export function MyJobsView({ jobs }: { jobs: JobRow[] }) {
+export function MyJobsView({ jobs }: { jobs: JobsListItem[] }) {
     if (jobs.length === 0) {
         return (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-16 text-center backdrop-blur-sm">
@@ -52,7 +50,7 @@ export function MyJobsView({ jobs }: { jobs: JobRow[] }) {
                                             <Clock size={14} /> Erstellt am {new Date(job.created_at).toLocaleDateString("de-DE")}
                                         </span>
                                         <span className="hidden sm:inline text-slate-600">•</span>
-                                        <span className="text-slate-500">{job.wage_hourly} € / h</span>
+                                        <span className="text-slate-500">{job.wage_hourly == null ? "—" : job.wage_hourly} € / h</span>
                                     </div>
                                 </div>
                                 <div className="text-slate-500 group-hover:translate-x-1 transition-transform">
