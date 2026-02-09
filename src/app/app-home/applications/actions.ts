@@ -43,7 +43,7 @@ export async function updateApplicationStatus(applicationId: string, newStatus: 
         type: "application_status",
         title: title,
         body: body,
-        data: { route: "/app-home/activity" }
+        data: { route: "/app-home/activities" }
     });
 
     revalidatePath("/app-home/applications");

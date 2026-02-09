@@ -4,7 +4,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, MapPin, Banknote } from "lucide-react";
 import { Database } from "@/lib/types/supabase";
-import { getEffectiveView } from "@/lib/dal/jobbridge";
+import { getEffectiveView, fetchJobApplications } from "@/lib/dal/jobbridge";
+import { ApplicantList } from "@/components/offers/ApplicantList";
 
 type JobRow = Database['public']['Tables']['jobs']['Row'];
 
@@ -34,6 +35,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         redirect("/app-home/offers");
     }
 
+    // Fetch Applications
+    const appRes = await fetchJobApplications(jobId, profile.id);
+    const applications = appRes.ok ? appRes.data : [];
+
+
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
             <Link href="/app-home/offers" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors">
@@ -61,7 +68,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                         </div>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${job.status === 'open' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                            job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/30 text-slate-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/30 text-slate-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                         }`}>
                         {job.status === 'open' ? 'Aktiv' : job.status === 'closed' ? 'Geschlossen' : job.status}
                     </span>
@@ -69,9 +76,20 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
                 <div className="prose prose-invert max-w-none">
                     <h3 className="text-lg font-semibold text-white mb-2">Beschreibung</h3>
-                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{job.description}</p>
+                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed mb-8">{job.description}</p>
                 </div>
             </div>
+
+            {/* Application Management Section */}
+            <div className="mt-8">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                    Bewerbungen
+                    <span className="text-sm font-normal text-slate-400 bg-white/5 px-3 py-1 rounded-full">{applications?.length || 0}</span>
+                </h2>
+                <ApplicantList applications={applications || []} />
+            </div>
+
+
         </div>
     );
 }

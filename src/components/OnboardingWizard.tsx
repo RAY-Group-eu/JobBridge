@@ -8,12 +8,11 @@ import { ChoiceTile } from "./ui/ChoiceTile";
 import { ButtonPrimary } from "./ui/ButtonPrimary";
 import { ButtonSecondary } from "./ui/ButtonSecondary";
 import { Loader } from "./ui/Loader";
-// import { Toast } from "./ui/Toast";
 import { signUpWithEmail, signInWithEmail } from "@/lib/authClient";
 import { saveProfile } from "@/lib/profile";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { useEmailResend } from "@/lib/hooks/useEmailResend";
 import { type AccountType, type OnboardingRole, type Profile, type ProviderKind } from "@/lib/types";
-// import { getRegions, type Region } from "@/lib/regions";
 import { BRAND_EMAIL } from "@/lib/constants";
 import { Sparkles, HandHeart, Building2 } from "lucide-react";
 import { LocationStep } from "./onboarding/LocationStep";
@@ -79,21 +78,12 @@ export function OnboardingWizard({
   // const [toastMsg, setToastMsg] = useState("");
   // const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [showCodeForm, setShowCodeForm] = useState(false);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
 
-  // const [codeLocked, setCodeLocked] = useState(false);
-  // const [emailStatus, setEmailStatus] = useState<"pending" | "sent" | "error">("pending");
-  const [resendMessage, setResendMessage] = useState("");
-
-  useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resendCooldown]);
+  // Email resend hook
+  const { cooldown: resendCooldown, message: resendMessage, error: resendError, loading: resendLoading, resend: handleResendConfirmation } = useEmailResend(email);
 
   // const [regions, setRegions] = useState<Region[]>([]);
   // const [regionsLoading, setRegionsLoading] = useState(true);
@@ -119,40 +109,7 @@ export function OnboardingWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMode]);
 
-  const handleResendConfirmation = async (e?: React.MouseEvent | React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (resendCooldown > 0) return;
-    setLoading(true);
-    setResendMessage("");
-    setError(null);
-    try {
-      const { error } = await supabaseBrowser.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) throw error;
-
-      setResendMessage("E-Mail wurde erneut gesendet.");
-      setResendCooldown(60);
-    } catch (err: unknown) {
-      console.error("Resend error:", err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const errorObj = err as any;
-      // Check for rate limit error specifically
-      if (errorObj?.status === 429 || errorObj?.message?.includes("security purposes")) {
-        setError("Bitte warte einen Moment, bevor du es erneut versuchst (" + (errorObj?.message || "Rate Limit") + ").");
-        setResendCooldown(60); // Force cooldown on rate limit
-      } else {
-        setError(getErrorMessage(err, "Fehler beim Senden."));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // handleResendConfirmation is now provided by useEmailResend hook
 
   const handleVerifyCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -634,7 +591,7 @@ export function OnboardingWizard({
                           Weiter prüfen
                         </ButtonPrimary>
                         <div className="flex flex-col gap-3">
-                          <ButtonSecondary onClick={handleResendConfirmation} className="w-full" disabled={resendCooldown > 0 || loading}>
+                          <ButtonSecondary onClick={handleResendConfirmation} className="w-full" disabled={resendCooldown > 0 || resendLoading}>
                             {resendCooldown > 0 ? `Erneut senden (${resendCooldown}s)` : "Bestätigung erneut senden"}
                           </ButtonSecondary>
                           <ButtonSecondary
@@ -650,8 +607,10 @@ export function OnboardingWizard({
                         </div>
                       </div>
                       {/* emailStatus removed */}
-                      {resendMessage && (
-                        <p className="text-sm text-cyan-200/90 mt-2 font-medium">{resendMessage}</p>
+                      {(resendMessage || resendError) && (
+                        <p className={`text-sm mt-2 font-medium ${resendError ? 'text-red-300' : 'text-cyan-200/90'}`}>
+                          {resendError || resendMessage}
+                        </p>
                       )}
                       {showCodeForm && (
                         <motion.div

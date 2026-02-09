@@ -39,5 +39,6 @@ export type JobsListItem = {
   distance_km?: number | null;
   market_name?: string | null;
   brand_prefix?: string | null;
+  is_applied?: boolean;
 };
 

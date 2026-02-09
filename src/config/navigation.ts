@@ -6,7 +6,7 @@ export type NavTab = {
 
 export const SEEKER_TABS: NavTab[] = [
     { label: "Jobs", href: "/app-home/jobs" },
-    { label: "Aktivität", href: "/app-home/activity" },
+    { label: "Aktivität", href: "/app-home/activities" },
     // Profile is now in header menu
     { label: "Einstellungen", href: "/app-home/settings" },
 ];

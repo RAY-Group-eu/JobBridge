@@ -6,11 +6,27 @@ import { X, MapPin, Euro, Calendar, ShieldCheck, Clock, Building2, Briefcase, Ar
 import type { Database } from "@/lib/types/supabase";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { JobApplicationModal } from "@/components/jobs/JobApplicationModal";
+import dynamic from "next/dynamic";
+
+const LeafletMap = dynamic(() => import("@/components/ui/LeafletMap"), {
+    ssr: false,
+    loading: () => (
+        <div className="w-full h-full bg-[#121217] animate-pulse flex items-center justify-center text-slate-700">
+            <MapPin size={24} />
+        </div>
+    ),
+});
 
 type JobRow = Database['public']['Tables']['jobs']['Row'] & {
     market_name?: string | null;
     public_location_label?: string | null;
     distance_km?: number | null;
+    is_applied?: boolean;
+    creator?: {
+        full_name: string | null;
+        company_name: string | null;
+        account_type: Database["public"]["Enums"]["account_type"] | null;
+    } | null;
 };
 
 interface JobDetailModalProps {
@@ -19,9 +35,10 @@ interface JobDetailModalProps {
     onClose: () => void;
     canApply: boolean;
     guardianStatus: string;
+    context?: 'feed' | 'activity';
 }
 
-export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus }: JobDetailModalProps) {
+export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus, context = 'feed' }: JobDetailModalProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
 
     if (!job) return null;
@@ -72,6 +89,11 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus 
 
                                         <div className="relative z-10 flex flex-col gap-6">
                                             <div className="flex gap-3">
+                                                {job.is_applied && (
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                                                        <CheckCircle2 size={12} /> Bereits beworben
+                                                    </span>
+                                                )}
                                                 {job.category && (
                                                     <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/20">
                                                         {job.category}
@@ -102,6 +124,20 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus 
                                                     </div>
                                                     <span>{job.public_location_label || "Rheinbach"}</span>
                                                 </div>
+                                                {job.creator && (
+                                                    <>
+                                                        <div className="w-px h-8 bg-white/10 hidden sm:block" />
+                                                        <a href={`/app-home/profile/view/${job.posted_by}`} className="flex items-center gap-2 group hover:bg-white/5 p-1 rounded-lg transition-colors">
+                                                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all">
+                                                                {(job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Erstellt von</span>
+                                                                <span className="text-sm text-white group-hover:text-indigo-300 transition-colors">{job.creator.company_name || job.creator.full_name || "Unbekannt"}</span>
+                                                            </div>
+                                                        </a>
+                                                    </>
+                                                )}
                                                 {job.distance_km != null && (
                                                     <div className="flex items-center gap-2 text-slate-500">
                                                         <Clock size={16} />
@@ -128,14 +164,14 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus 
                                         <div className="h-px bg-white/5" />
 
                                         {/* Grid Layout for Details & Trust */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
 
                                             {/* Trust Section */}
-                                            <div className="space-y-4">
+                                            <div className="space-y-4 flex flex-col">
                                                 <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                                     <ShieldCheck size={16} /> Sicherheit
                                                 </h4>
-                                                <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+                                                <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 flex-1 flex flex-col justify-center">
                                                     <div className="flex items-start gap-4">
                                                         <div className="mt-1 p-2 bg-green-500/10 rounded-full text-green-400 shrink-0">
                                                             <CheckCircle2 size={20} />
@@ -151,15 +187,20 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus 
                                             </div>
 
                                             {/* Location / Map Placeholder */}
-                                            <div className="space-y-4">
+                                            <div className="space-y-4 flex flex-col">
                                                 <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                                     <MapPin size={16} /> Standort
                                                 </h4>
-                                                <div className="rounded-2xl border border-white/5 bg-[#121217] p-1 h-32 relative flex items-center justify-center overflow-hidden group">
-                                                    <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-30 group-hover:opacity-50 transition-opacity" />
-                                                    <div className="text-center relative z-10">
-                                                        <MapPin size={24} className="mx-auto mb-2 text-indigo-500" />
-                                                        <span className="text-xs text-slate-500 uppercase tracking-widest font-medium">Ungefähre Lage</span>
+                                                <div className="rounded-2xl border border-white/5 bg-[#121217] p-1 flex-1 min-h-[160px] relative flex items-center justify-center overflow-hidden group">
+                                                    <LeafletMap
+                                                        center={[50.6256, 6.9493]}
+                                                        zoom={14}
+                                                        className="rounded-xl"
+                                                    />
+
+                                                    {/* Overlay for "Approximate Location" text style if desired, or relying on map visual */}
+                                                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 z-[400]">
+                                                        <span className="text-[10px] text-slate-300 uppercase tracking-widest font-medium">Ungefähre Lage</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -169,21 +210,55 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus 
                                     {/* Action Footer */}
                                     <div className="bg-[#111116] px-8 py-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
                                         <div className="text-center md:text-left">
-                                            <p className="text-sm text-slate-400">
-                                                Interesse geweckt?
-                                            </p>
-                                            <p className="text-xs text-slate-600 mt-0.5">
-                                                Mit der Bewerbung akzeptierst du die Nutzungsbedingungen.
-                                            </p>
+                                            {job.is_applied ? (
+                                                <>
+                                                    <p className="text-sm text-slate-400">
+                                                        Bewerbung erfolgreich gesendet
+                                                    </p>
+                                                    {context === 'feed' && (
+                                                        <p className="text-xs text-slate-600 mt-0.5">
+                                                            Du kannst den Status in deinen Aktivitäten prüfen.
+                                                        </p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm text-slate-400">
+                                                        Interesse geweckt?
+                                                    </p>
+                                                    <p className="text-xs text-slate-600 mt-0.5">
+                                                        Mit der Bewerbung akzeptierst du die Nutzungsbedingungen.
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
-                                        <ButtonPrimary
-                                            onClick={() => setIsApplicationModalOpen(true)}
-                                            className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all"
-                                        >
-                                            <span className="flex items-center gap-3 font-bold">
-                                                Jetzt bewerben <ArrowRight size={20} />
-                                            </span>
-                                        </ButtonPrimary>
+                                        {job.is_applied ? (
+                                            context === 'feed' ? (
+                                                <a href="/app-home/activities">
+                                                    <ButtonPrimary
+                                                        className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.02] transition-all bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500/50"
+                                                    >
+                                                        <span className="flex items-center gap-3 font-bold">
+                                                            Zur Bewerbung <ArrowRight size={20} />
+                                                        </span>
+                                                    </ButtonPrimary>
+                                                </a>
+                                            ) : (
+                                                <div className="px-6 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium flex items-center gap-2">
+                                                    <CheckCircle2 size={20} />
+                                                    Bereits beworben
+                                                </div>
+                                            )
+                                        ) : (
+                                            <ButtonPrimary
+                                                onClick={() => setIsApplicationModalOpen(true)}
+                                                className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all"
+                                            >
+                                                <span className="flex items-center gap-3 font-bold">
+                                                    Jetzt bewerben <ArrowRight size={20} />
+                                                </span>
+                                            </ButtonPrimary>
+                                        )}
                                     </div>
                                 </Dialog.Panel>
                             </Transition.Child>

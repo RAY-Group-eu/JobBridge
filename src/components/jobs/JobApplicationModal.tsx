@@ -152,7 +152,7 @@ export function JobApplicationModal({ isOpen, onClose, jobTitle, jobId, canApply
                                                     <ButtonPrimary
                                                         type="submit"
                                                         disabled={loading}
-                                                        className="w-full"
+                                                        className="w-full flex items-center justify-center"
                                                         onClick={(e: any) => {
                                                             if (!canApply) {
                                                                 e.preventDefault();

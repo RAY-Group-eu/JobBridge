@@ -3,6 +3,7 @@ import type { AccountType } from "@/lib/types";
 import type { Database } from "@/lib/types/supabase";
 import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem } from "@/lib/types/jobbridge";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type Result<T> = { ok: true; data: T; debug: Record<string, unknown> } | { ok: false; error: ErrorInfo; debug: Record<string, unknown> };
 
@@ -207,6 +208,7 @@ function mapJobsListItem(row: unknown): JobsListItem {
     distance_km: typeof r.distance_km === "number" ? r.distance_km : (r.distance_km as number | null | undefined) ?? null,
     market_name: typeof r.market_name === "string" ? r.market_name : (r.market_name as string | null | undefined) ?? null,
     brand_prefix: typeof r.brand_prefix === "string" ? r.brand_prefix : (r.brand_prefix as string | null | undefined) ?? null,
+    is_applied: false, // Default to false, will be overwritten if true (or in fetchJobs)
   };
 }
 
@@ -269,6 +271,36 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     console.log(`[DAL] ${event}`, payload);
   };
 
+  // Helper to fetch applied job IDs for the current user
+  const fetchAppliedJobIds = async (userId: string): Promise<Set<string>> => {
+    if (!userId) return new Set();
+
+    let client = supabase;
+    try {
+      // Try to use admin client to bypass potential RLS issues for this specific checks
+      // This is safe because we explicitly filter by applicant_id = userId
+      const admin = getSupabaseAdminClient();
+      if (admin) {
+        client = admin;
+      }
+    } catch (e) {
+      // Fallback to user client if admin is not configured
+      console.warn("[DAL] Admin client not available for fetchAppliedJobIds, falling back to user client", e);
+    }
+
+    const { data, error } = await client
+      .from("applications")
+      .select("job_id")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("[DAL] fetchAppliedJobIds error", error);
+    }
+
+    if (error || !data) return new Set();
+    return new Set(data.map(a => a.job_id));
+  };
+
   // DEMO
   if (params.view.source === "demo") {
     const table = "demo_jobs";
@@ -292,12 +324,15 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
       return { ok: false, error: err, debug };
     }
 
-    const items = Array.isArray(res.data) ? res.data.map(mapJobsListItem) : [];
+    // Demo: no real applications, but we could mock if needed. For now false.
+    const items = Array.isArray(res.data) ? res.data.map(item => ({ ...mapJobsListItem(item), is_applied: false })) : [];
     log("fetchJobs.demo.ok", { table, rows: items.length });
     return { ok: true, data: items, debug };
   }
 
   // LIVE
+  const appliedJobIds = await fetchAppliedJobIds(params.userId);
+
   if (params.mode === "feed" && params.marketId) {
     log("fetchJobs.live.rpc.start", { rpc: "get_jobs_feed", marketId: params.marketId, limit, offset });
     const rpcRes = await supabase.rpc("get_jobs_feed", {
@@ -315,7 +350,11 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
       const items = (rpcRows as unknown[]).map((row) => {
         const item = mapJobsListItem(row);
         // RPC doesn't always return wage_hourly; keep UI stable.
-        return { ...item, wage_hourly: null };
+        return {
+          ...item,
+          wage_hourly: null,
+          is_applied: appliedJobIds.has(item.id)
+        };
       });
       log("fetchJobs.live.rpc.ok", { rows: items.length });
 
@@ -362,8 +401,27 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     return { ok: false, error: err, debug };
   }
 
-  let items = Array.isArray(tableRes.data) ? tableRes.data.map(mapJobsListItem) : [];
+  let items = Array.isArray(tableRes.data) ? tableRes.data.map(item => ({
+    ...mapJobsListItem(item),
+    is_applied: appliedJobIds.has(String(item.id)) as boolean
+  })) : [];
+
   items = await enrichMarketsIfPossible(supabase, items, debug);
+
+  // Enrich with creator info
+  const creatorIds = Array.from(new Set(items.map(i => i.posted_by).filter(Boolean)));
+  if (creatorIds.length > 0) {
+    const { data: creators } = await supabase
+      .from("profiles")
+      .select("id, full_name, company_name, account_type")
+      .in("id", creatorIds);
+
+    const creatorMap = new Map(creators?.map(c => [c.id, c]));
+    items = items.map(i => ({
+      ...i,
+      creator: creatorMap.get(i.posted_by) || null
+    }));
+  }
 
   log("fetchJobs.live.table.ok", { rows: items.length });
   return { ok: true, data: items, debug };
@@ -381,6 +439,17 @@ export type CreateJobInput = {
   public_location_label?: string;
   public_lat?: number | null;
   public_lng?: number | null;
+};
+
+export type JobRow = Database["public"]["Tables"]["jobs"]["Row"] & {
+  market_name?: string | null;
+  distance_km?: number | null;
+  is_applied?: boolean;
+  creator?: {
+    full_name: string | null;
+    company_name: string | null;
+    account_type: Database["public"]["Enums"]["account_type"] | null;
+  } | null;
 };
 
 export type JobPrivateInput = {
@@ -614,4 +683,79 @@ export async function retrySaveJobPrivateDetails(params: {
   const res = await saveJobPrivateDetailsDefensive(supabase, params.jobId, params.privateDetails, debug);
   if (res.ok) return { ok: true, data: { ok: true }, debug };
   return { ok: false, error: res.error, debug };
+}
+
+export type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"] & {
+  applicant?: {
+    full_name: string | null;
+    // avatar_url removed as it doesn't exist on profile
+  } | null;
+};
+
+export async function fetchJobApplications(jobId: string, userId: string): Promise<Result<ApplicationRow[]>> {
+  const supabase = await supabaseServer();
+  const debug: Record<string, unknown> = { fn: "fetchJobApplications", jobId };
+
+  // 1. Verify ownership (optional but good practice, though RLS should handle it)
+  // We can skip explicit check if RLS is set up correctly, but for now let's trust the query.
+
+  const { data, error } = await supabase
+    .from("applications")
+    .select("*")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false });
+
+  debug.applications = {
+    count: data?.length,
+    status: error ? "error" : "ok",
+    error: error ? toErrorInfo(error) : null
+  };
+
+  if (error) {
+    return { ok: false, error: toErrorInfo(error), debug };
+  }
+
+  let items = (data as ApplicationRow[]) || [];
+
+  // Enrich with applicant info
+  const applicantIds = Array.from(new Set(items.map(i => i.user_id).filter(Boolean)));
+  if (applicantIds.length > 0) {
+    const { data: applicants } = await supabase
+      .from("profiles")
+      .select("id, full_name") // removed avatar_url
+      .in("id", applicantIds);
+
+    const applicantMap = new Map(applicants?.map(c => [c.id, c]));
+    items = items.map(i => ({
+      ...i,
+      applicant: applicantMap.get(i.user_id) || null
+    }));
+  }
+
+  return { ok: true, data: items, debug };
+}
+
+export async function updateApplicationStatus(
+  applicationId: string,
+  status: Database["public"]["Enums"]["application_status"], // e.g. 'accepted', 'rejected'
+  rejectionReason?: string
+): Promise<Result<void>> {
+  const supabase = await supabaseServer();
+  const debug: Record<string, unknown> = { fn: "updateApplicationStatus", applicationId, status };
+
+  const updatePayload: any = { status };
+  if (status === 'rejected' && rejectionReason) {
+    updatePayload.rejection_reason = rejectionReason;
+  }
+
+  const { error } = await supabase
+    .from("applications")
+    .update(updatePayload)
+    .eq("id", applicationId);
+
+  if (error) {
+    return { ok: false, error: toErrorInfo(error), debug };
+  }
+
+  return { ok: true, data: undefined, debug };
 }

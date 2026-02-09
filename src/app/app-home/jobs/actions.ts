@@ -102,6 +102,6 @@ export async function applyToJob(formData: FormData | string) {
     }
 
     revalidatePath("/app-home/jobs");
-    revalidatePath("/app-home/activity");
+    revalidatePath("/app-home/activities");
     return { success: true };
 }

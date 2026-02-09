@@ -9,6 +9,12 @@ type JobRow = Database['public']['Tables']['jobs']['Row'] & {
     market_name?: string | null;  // RPC or Join often adds extra fields
     public_location_label?: string | null;
     distance_km?: number | null;
+    is_applied?: boolean;
+    creator?: {
+        full_name: string | null;
+        company_name: string | null;
+        account_type: Database["public"]["Enums"]["account_type"] | null;
+    } | null;
 };
 
 function isMinor(birthdate: string | null): boolean {
