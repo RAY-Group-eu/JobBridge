@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, MapPin, Banknote } from "lucide-react";
 import { Database } from "@/lib/types/supabase";
 import { getEffectiveView, fetchJobApplications } from "@/lib/dal/jobbridge";
 import { ApplicantList } from "@/components/offers/ApplicantList";
+import { ApplicationRow } from "@/lib/types/jobbridge";
 
 type JobRow = Database['public']['Tables']['jobs']['Row'];
 

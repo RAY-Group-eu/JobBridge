@@ -7,6 +7,9 @@ import { z } from "zod";
 import { createJob as createJobDAL, getEffectiveView, retrySaveJobPrivateDetails } from "@/lib/dal/jobbridge";
 import type { ErrorInfo } from "@/lib/types/jobbridge";
 import type { AccountType } from "@/lib/types";
+import { Database } from "@/lib/types/supabase";
+
+type Result<T> = { ok: true; data: T; debug: Record<string, unknown> } | { ok: false; error: ErrorInfo; debug: Record<string, unknown> };
 
 const createJobSchema = z.object({
     title: z.string().min(5, "Titel muss mindestens 5 Zeichen lang sein."),
@@ -175,4 +178,35 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
     revalidatePath("/app-home/offers");
     revalidatePath("/app-home/jobs");
     redirect("/app-home/offers");
+}
+
+function toErrorInfo(error: unknown): ErrorInfo {
+    if (typeof error === "string") return { message: error };
+    if (error && typeof error === "object" && "message" in error) return { message: (error as any).message };
+    return { message: "Unknown error" };
+}
+
+export async function updateApplicationStatus(
+    applicationId: string,
+    status: Database["public"]["Enums"]["application_status"], // e.g. 'accepted', 'rejected'
+    rejectionReason?: string
+): Promise<Result<void>> {
+    const supabase = await supabaseServer();
+    const debug: Record<string, unknown> = { fn: "updateApplicationStatus", applicationId, status };
+
+    const updatePayload: any = { status };
+    if (status === 'rejected' && rejectionReason) {
+        updatePayload.rejection_reason = rejectionReason;
+    }
+
+    const { error } = await supabase
+        .from("applications")
+        .update(updatePayload)
+        .eq("id", applicationId);
+
+    if (error) {
+        return { ok: false, error: toErrorInfo(error), debug };
+    }
+
+    return { ok: true, data: undefined, debug };
 }

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { User, MessageSquare, Check, X, Clock } from "lucide-react";
-import { ApplicationRow, updateApplicationStatus } from "@/lib/dal/jobbridge";
+import { ApplicationRow } from "@/lib/types/jobbridge";
+import { updateApplicationStatus } from "@/app/app-home/offers/actions";
 import { RejectionModal } from "./RejectionModal";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";

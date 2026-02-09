@@ -1,7 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { AccountType } from "@/lib/types";
 import type { Database } from "@/lib/types/supabase";
-import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem } from "@/lib/types/jobbridge";
+import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem, ApplicationRow } from "@/lib/types/jobbridge";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -401,9 +401,9 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     return { ok: false, error: err, debug };
   }
 
-  let items = Array.isArray(tableRes.data) ? tableRes.data.map(item => ({
+  let items: JobsListItem[] = Array.isArray(tableRes.data) ? tableRes.data.map(item => ({
     ...mapJobsListItem(item),
-    is_applied: appliedJobIds.has(String(item.id)) as boolean
+    is_applied: appliedJobIds.has(String(item.id))
   })) : [];
 
   items = await enrichMarketsIfPossible(supabase, items, debug);
@@ -417,10 +417,16 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
       .in("id", creatorIds);
 
     const creatorMap = new Map(creators?.map(c => [c.id, c]));
-    items = items.map(i => ({
-      ...i,
-      creator: creatorMap.get(i.posted_by) || null
-    }));
+    items = items.map(i => {
+      const creator = creatorMap.get(i.posted_by);
+      return {
+        ...i,
+        creator: creator ? {
+          ...creator,
+          account_type: creator.account_type as AccountType
+        } : null
+      };
+    });
   }
 
   log("fetchJobs.live.table.ok", { rows: items.length });
@@ -685,12 +691,7 @@ export async function retrySaveJobPrivateDetails(params: {
   return { ok: false, error: res.error, debug };
 }
 
-export type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"] & {
-  applicant?: {
-    full_name: string | null;
-    // avatar_url removed as it doesn't exist on profile
-  } | null;
-};
+
 
 export async function fetchJobApplications(jobId: string, userId: string): Promise<Result<ApplicationRow[]>> {
   const supabase = await supabaseServer();
@@ -735,27 +736,4 @@ export async function fetchJobApplications(jobId: string, userId: string): Promi
   return { ok: true, data: items, debug };
 }
 
-export async function updateApplicationStatus(
-  applicationId: string,
-  status: Database["public"]["Enums"]["application_status"], // e.g. 'accepted', 'rejected'
-  rejectionReason?: string
-): Promise<Result<void>> {
-  const supabase = await supabaseServer();
-  const debug: Record<string, unknown> = { fn: "updateApplicationStatus", applicationId, status };
 
-  const updatePayload: any = { status };
-  if (status === 'rejected' && rejectionReason) {
-    updatePayload.rejection_reason = rejectionReason;
-  }
-
-  const { error } = await supabase
-    .from("applications")
-    .update(updatePayload)
-    .eq("id", applicationId);
-
-  if (error) {
-    return { ok: false, error: toErrorInfo(error), debug };
-  }
-
-  return { ok: true, data: undefined, debug };
-}

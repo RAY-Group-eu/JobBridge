@@ -6,28 +6,17 @@ import { JobCard } from "@/components/jobs/JobCard";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
 import { Briefcase, CheckCircle2 } from "lucide-react";
 import type { Database } from "@/lib/types/supabase";
-
-type JobRow = Database['public']['Tables']['jobs']['Row'] & {
-    market_name?: string | null;
-    public_location_label?: string | null;
-    distance_km?: number | null;
-    is_applied?: boolean;
-    creator?: {
-        full_name: string | null;
-        company_name: string | null;
-        account_type: Database["public"]["Enums"]["account_type"] | null;
-    } | null;
-};
+import type { JobsListItem } from "@/lib/types/jobbridge";
 
 interface JobsListProps {
-    jobs: JobRow[];
+    jobs: JobsListItem[];
     isDemo: boolean;
     canApply: boolean;
     guardianStatus: string;
 }
 
 export function JobsList({ jobs, isDemo, canApply, guardianStatus }: JobsListProps) {
-    const [selectedJob, setSelectedJob] = useState<JobRow | null>(null);
+    const [selectedJob, setSelectedJob] = useState<JobsListItem | null>(null);
     const router = useRouter();
 
     const handleClose = useCallback(() => setSelectedJob(null), []);

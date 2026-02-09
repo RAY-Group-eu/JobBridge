@@ -3,15 +3,11 @@
 import { memo } from "react";
 import { Building2, MapPin, Euro, Clock } from "lucide-react";
 import type { Database } from "@/lib/types/supabase";
-
-type JobRow = Database['public']['Tables']['jobs']['Row'] & {
-    market_name?: string | null;
-    public_location_label?: string | null;
-    distance_km?: number | null;
-};
+import { timeAgo } from "@/lib/utils";
+import type { JobsListItem } from "@/lib/types/jobbridge";
 
 interface JobCardProps {
-    job: JobRow;
+    job: JobsListItem;
     isDemo?: boolean;
     isApplied?: boolean;
     onClick: () => void;
@@ -81,7 +77,7 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, onClick }
                     {job.distance_km != null && (
                         <div className="flex items-center gap-2 ml-auto text-xs text-slate-500 font-medium">
                             <Clock size={14} className="text-slate-600" />
-                            <span>{timeAgo}</span>
+                            <span>{timeAgo(job.created_at)}</span>
                             {job.creator && (
                                 <>
                                     <span className="text-slate-700">•</span>

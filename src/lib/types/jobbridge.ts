@@ -40,5 +40,19 @@ export type JobsListItem = {
   market_name?: string | null;
   brand_prefix?: string | null;
   is_applied?: boolean;
+  creator?: {
+    full_name: string | null;
+    company_name: string | null;
+    account_type: AccountType;
+  } | null;
+  category?: Database["public"]["Enums"]["job_category"] | null;
+  address_reveal_policy?: string | null;
+};
+
+export type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"] & {
+  applicant?: {
+    full_name: string | null;
+    // avatar_url removed as it doesn't exist on profile
+  } | null;
 };
 

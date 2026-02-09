@@ -7,6 +7,7 @@ import type { Database } from "@/lib/types/supabase";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { JobApplicationModal } from "@/components/jobs/JobApplicationModal";
 import dynamic from "next/dynamic";
+import { JobsListItem } from "@/lib/types/jobbridge";
 
 const LeafletMap = dynamic(() => import("@/components/ui/LeafletMap"), {
     ssr: false,
@@ -17,20 +18,8 @@ const LeafletMap = dynamic(() => import("@/components/ui/LeafletMap"), {
     ),
 });
 
-type JobRow = Database['public']['Tables']['jobs']['Row'] & {
-    market_name?: string | null;
-    public_location_label?: string | null;
-    distance_km?: number | null;
-    is_applied?: boolean;
-    creator?: {
-        full_name: string | null;
-        company_name: string | null;
-        account_type: Database["public"]["Enums"]["account_type"] | null;
-    } | null;
-};
-
 interface JobDetailModalProps {
-    job: JobRow | null;
+    job: JobsListItem | null;
     isOpen: boolean;
     onClose: () => void;
     canApply: boolean;

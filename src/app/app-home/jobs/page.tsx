@@ -1,21 +1,9 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Database } from "@/lib/types/supabase";
 import { fetchJobs, getEffectiveView } from "@/lib/dal/jobbridge";
 import { QueryDebugPanel } from "@/components/debug/QueryDebugPanel";
 import { JobsList } from "@/components/jobs/JobsList";
-
-type JobRow = Database['public']['Tables']['jobs']['Row'] & {
-    market_name?: string | null;  // RPC or Join often adds extra fields
-    public_location_label?: string | null;
-    distance_km?: number | null;
-    is_applied?: boolean;
-    creator?: {
-        full_name: string | null;
-        company_name: string | null;
-        account_type: Database["public"]["Enums"]["account_type"] | null;
-    } | null;
-};
+import type { JobsListItem } from "@/lib/types/jobbridge";
 
 function isMinor(birthdate: string | null): boolean {
     if (!birthdate) return true;
@@ -78,7 +66,7 @@ export default async function JobsPage() {
         offset: 0,
     });
 
-    const jobs: JobRow[] = jobsRes.ok ? (jobsRes.data as unknown as JobRow[]) : [];
+    const jobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
 
     return (
         <div className="container mx-auto py-12 px-4 md:px-6">
