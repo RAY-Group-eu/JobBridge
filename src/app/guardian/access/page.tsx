@@ -1,21 +1,34 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
-import { Suspense } from "react";
+import { ButtonSecondary } from "@/components/ui/ButtonSecondary";
+import { Suspense, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
-import { useState } from "react";
-import { ShieldCheck, CheckCircle, AlertCircle } from "lucide-react";
+import { ShieldCheck, CheckCircle, AlertCircle, LogIn, UserPlus } from "lucide-react";
+import { LeftBrandChip } from "@/components/layout/header/LeftBrandChip";
 
 function GuardianAccessContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const token = searchParams.get("token");
+    console.log("GuardianAccessPage mounted. Token:", token);
     const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
     const [childName, setChildName] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+    const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-    // Fetch invitation info on mount
-    useState(() => {
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabaseBrowser.auth.getSession();
+            setIsAuthenticated(!!session);
+            if (session?.user?.email) {
+                setCurrentUserEmail(session.user.email);
+            }
+        };
+        checkAuth();
+
         if (token) {
             supabaseBrowser
                 .rpc("get_guardian_invitation_info", { token_input: token })
@@ -25,13 +38,19 @@ function GuardianAccessContent() {
                     }
                 });
         }
-    });
+    }, [token]);
+
+    const handleLogout = async () => {
+        await supabaseBrowser.auth.signOut();
+        // Refresh to trigger unauthenticated state and redirect
+        window.location.reload();
+    };
 
     if (!token) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-slate-950 text-white">
+            <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-[#07090f] text-white">
                 <div className="w-full max-w-md text-center space-y-4">
-                    <div className="mx-auto w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
+                    <div className="mx-auto w-12 h-12 bg-rose-500/10 rounded-full flex items-center justify-center text-rose-500">
                         <AlertCircle className="w-6 h-6" />
                     </div>
                     <h1 className="text-2xl font-bold">Ungültiger Link</h1>
@@ -45,93 +64,184 @@ function GuardianAccessContent() {
         setState("loading");
         setError(null);
         try {
+            console.log("Attempting to redeem token:", token);
             const { data, error } = await supabaseBrowser.rpc("redeem_guardian_invitation", { token_input: token });
+
+            console.log("RPC Response - Data:", data);
+            console.log("RPC Response - Error:", error);
+
             if (error) throw error;
+
             const res = data as unknown as { success?: boolean; error?: string } | null;
             if (!res?.success) {
+                console.error("Redemption failed with business logic error:", res?.error);
                 throw new Error(res?.error || "Bestätigung fehlgeschlagen.");
             }
             setState("success");
-        } catch (e) {
+        } catch (e: any) {
+            // Detailed error logging
+            console.error("Redemption Catch Block:", e);
+            if (typeof e === 'object') {
+                try {
+                    console.error("Redemption Error Stringified:", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+                } catch (jsonError) {
+                    console.error("Could not stringify error:", jsonError);
+                }
+            }
+
             setState("error");
-            const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+            let msg = "Unbekannter Fehler";
+            if (e instanceof Error) {
+                msg = e.message;
+            } else if (typeof e === "object" && e !== null && "message" in e) {
+                msg = (e as any).message;
+            } else if (typeof e === "string") {
+                msg = e;
+            } else {
+                try {
+                    msg = JSON.stringify(e);
+                } catch {
+                    msg = "Fehler konnte nicht dargestellt werden";
+                }
+            }
+            console.log("Setting error message to:", msg);
             setError(msg);
         }
     };
 
+    const handleLoginRedirect = () => {
+        const redirectUrl = encodeURIComponent(`/guardian/access?token=${token}`);
+        router.push(`/?authMode=signin&redirectTo=${redirectUrl}`);
+    };
+
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-slate-950 text-white relative overflow-hidden">
-            {/* Background Effects */}
+        <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-[#07090f] text-white relative overflow-hidden">
+            {/* Soft Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-indigo-500/5 blur-[120px] rounded-full" />
             </div>
 
-            <div className="relative max-w-md w-full space-y-8 text-center z-10">
-                {/* Branding */}
-                <div className="flex justify-center mb-6">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 backdrop-blur-md">
-                        <div className="w-6 h-6 bg-indigo-600 rounded-lg flex items-center justify-center">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-                                <path d="M3 9.5L12 4L21 9.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M19 13V19.4C19 19.7314 18.7314 20 18.4 20H5.6C5.26863 20 5 19.7314 5 19.4V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </div>
-                        <span className="font-bold tracking-tight text-sm">JobBridge</span>
-                    </div>
-                </div>
+            {/* Branding Top Left */}
+            <div className="absolute top-6 left-6 z-20">
+                <LeftBrandChip />
+            </div>
 
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                        <ShieldCheck className="w-8 h-8 text-white" />
-                    </div>
+            <div className="relative max-w-md w-full space-y-6 text-center z-10">
+
+                {/* Header Section */}
+                <div className="flex flex-col items-center gap-6">
+                    {isAuthenticated ? (
+                        <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-2">
+                            <ShieldCheck className="w-8 h-8" />
+                        </div>
+                    ) : (
+                        <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-2">
+                            {/* Friendlier Icon for initial contact */}
+                            <UserPlus className="w-8 h-8" />
+                        </div>
+                    )}
+
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight mb-2">Account bestätigen</h1>
-                        <p className="text-slate-400">
-                            Übernehme Verantwortung für das JobBridge-Konto deines Kindes <span className="text-white font-medium inline-block min-w-[50px]">{childName || "..."}</span>
+                        <h1 className="text-2xl font-bold tracking-tight mb-2">
+                            {isAuthenticated ? "Elternbestätigung" : "Willkommen bei JobBridge"}
+                        </h1>
+                        <p className="text-slate-400 text-base leading-relaxed">
+                            {isAuthenticated ? (
+                                <>
+                                    Bestätige das Konto für <span className="text-white font-medium">{childName || "dein Kind"}</span>.
+                                </>
+                            ) : (
+                                <>
+                                    Dein Kind <span className="text-white font-medium">{childName || ""}</span> benötigt deine Zustimmung für JobBridge.
+                                </>
+                            )}
                         </p>
                     </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-xl shadow-2xl">
-                    <p className="text-sm text-slate-300 mb-8 leading-relaxed">
-                        Durch die Bestätigung stimmst du zu, dass dein Kind über JobBridge Tätigkeiten annimmt und du als gesetzlicher Vertreter fungierst.
-                    </p>
-
-                    {state === "success" ? (
-                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-8 text-center animate-in fade-in zoom-in-95 duration-300">
-                            <div className="mx-auto w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-4">
-                                <CheckCircle className="w-6 h-6" />
+                {/* Main Card */}
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl">
+                    {isAuthenticated === false ? (
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <p className="text-white font-medium text-lg">Einloggen zum Fortfahren</p>
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    Um die Sicherheit deines Kindes zu gewährleisten, benötigen wir deine Bestätigung über ein JobBridge-Konto.
+                                </p>
                             </div>
-                            <h3 className="text-lg font-semibold text-emerald-200 mb-2">Erfolgreich bestätigt</h3>
-                            <p className="text-sm text-emerald-200/80">
-                                Das Konto ist nun freigeschaltet. Du kannst dieses Fenster schließen.
-                            </p>
+
+                            <ButtonPrimary
+                                onClick={handleLoginRedirect}
+                                className="w-full justify-center h-12 text-base font-medium shadow-lg shadow-indigo-500/20"
+                            >
+                                Jetzt anmelden oder registrieren
+                            </ButtonPrimary>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <ButtonPrimary
-                                onClick={confirm}
-                                disabled={state === "loading"}
-                                className="w-full justify-center h-12 text-base font-medium"
-                            >
-                                {state === "loading" ? "Wird bestätigt..." : "Jetzt bestätigen"}
-                            </ButtonPrimary>
-
-                            {state === "error" && (
-                                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200 flex items-center gap-3 text-left">
-                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                    <div>
-                                        <p className="font-medium">Fehler</p>
-                                        <p className="opacity-80">{error || "Bestätigung fehlgeschlagen."}</p>
+                        <>
+                            {/* Current User Info for Authenticated State */}
+                            <div className="mb-6 p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center text-white font-bold">
+                                        {/* Avatar Fallback */}
+                                        {(currentUserEmail || "U").charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="text-left overflow-hidden min-w-0">
+                                        <p className="text-xs text-slate-400">Angemeldet als</p>
+                                        <p className="text-sm font-medium text-white truncate w-full" title={currentUserEmail || ""}>
+                                            {currentUserEmail}
+                                        </p>
                                     </div>
                                 </div>
-                            )}
+                                <ButtonSecondary
+                                    onClick={handleLogout}
+                                    className="h-9 px-3 text-xs bg-transparent border-slate-600 hover:bg-slate-700 whitespace-nowrap flex-shrink-0"
+                                >
+                                    Nicht du?
+                                </ButtonSecondary>
+                            </div>
 
-                            <p className="text-xs text-slate-500 mt-4">
-                                Hinweis: Du musst als Elternteil eingeloggt sein oder einen Account erstellen.
+                            <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                                Hiermit bestätige ich, dass ich erziehungsberechtigt bin und der Nutzung von JobBridge durch mein Kind zustimme.
                             </p>
-                        </div>
+
+                            {state === "success" ? (
+                                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                                    <div className="mx-auto w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-3">
+                                        <CheckCircle className="w-5 h-5" />
+                                    </div>
+                                    <h3 className="text-base font-semibold text-emerald-100 mb-1">Erfolgreich bestätigt</h3>
+                                    <p className="text-xs text-emerald-200/80 mb-4">
+                                        Vielen Dank! Das Konto ist nun freigeschaltet.
+                                    </p>
+                                    <ButtonPrimary
+                                        onClick={() => router.push('/app-home')}
+                                        className="w-full justify-center h-10 text-sm font-medium"
+                                    >
+                                        Weiter zum Dashboard
+                                    </ButtonPrimary>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <ButtonPrimary
+                                        onClick={confirm}
+                                        disabled={state === "loading" || isAuthenticated === null}
+                                        className="w-full justify-center h-12 text-base font-semibold shadow-indigo-500/20 shadow-lg"
+                                    >
+                                        {state === "loading" ? "Wird bestätigt..." : "Jetzt bestätigen"}
+                                    </ButtonPrimary>
+
+                                    {state === "error" && (
+                                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200 flex items-center gap-3 text-left">
+                                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                            <div>
+                                                <p className="opacity-90 leading-tight">{error || "Bestätigung fehlgeschlagen."}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -141,7 +251,7 @@ function GuardianAccessContent() {
 
 export default function GuardianAccessPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><div className="animate-pulse">Laden...</div></div>}>
+        <Suspense fallback={<div className="min-h-screen bg-[#07090f] flex items-center justify-center text-white"><div className="animate-pulse">Laden...</div></div>}>
             <GuardianAccessContent />
         </Suspense>
     );

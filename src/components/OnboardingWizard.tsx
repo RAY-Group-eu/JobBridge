@@ -28,17 +28,20 @@ type OnboardingWizardProps = {
   forcedStep?: Step | null;
   initialEmail?: string;
   initialRegion?: string;
+  redirectTo?: string;
+  initialMode?: AuthMode;
 };
+
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
+
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || BRAND_EMAIL;
 
 const isProfileComplete = (profile: Profile | null | undefined) => {
   return Boolean(
     profile?.full_name && profile.birthdate && profile.city && profile.account_type
   );
 };
-
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || BRAND_EMAIL;
-const getErrorMessage = (err: unknown, fallback: string) =>
-  err instanceof Error ? err.message : fallback;
 
 function inferOnboardingRole(profile: Profile | null | undefined): OnboardingRole | null {
   if (!profile?.account_type) return null;
@@ -60,34 +63,38 @@ export function OnboardingWizard({
   forcedStep = null,
   initialEmail = "",
   initialRegion = "",
+  redirectTo,
+  initialMode = null,
 }: OnboardingWizardProps) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>(
-    forcedStep
-      ? forcedStep
-      : initialProfile && !isProfileComplete(initialProfile)
-        ? "role"
-        : "welcome"
-  );
-  const [mode, setMode] = useState<AuthMode>(null);
+  const [step, setStep] = useState<Step>(forcedStep || "welcome");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [emailConfirmed, setEmailConfirmed] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [toastOpen, setToastOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<"success" | "error" | "info">("info");
-  const [code, setCode] = useState("");
   const [codeMessage, setCodeMessage] = useState<string | null>(null);
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [showCodeForm, setShowCodeForm] = useState(false);
-  const [codeAttempts, setCodeAttempts] = useState(0);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [codeLocked, setCodeLocked] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<"pending" | "sent" | "error">("pending");
+  const [resendMessage, setResendMessage] = useState("");
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionsLoading, setRegionsLoading] = useState(true);
   const [profileData, setProfileData] = useState({
@@ -101,342 +108,152 @@ export function OnboardingWizard({
     companyMessage: "",
   });
 
-  // Lade Regionen beim Mount
+  // Load regions (reconstructed based on likely usage)
   useEffect(() => {
-    const loadRegions = async () => {
-      setRegionsLoading(true);
-      try {
-        const loadedRegions = await getRegions();
-        setRegions(loadedRegions);
-      } catch (err) {
-        console.error("Fehler beim Laden der Regionen:", err);
-      } finally {
-        setRegionsLoading(false);
-      }
-    };
-    loadRegions();
+    getRegions().then((data) => {
+      setRegions(data);
+      setRegionsLoading(false);
+    });
   }, []);
 
-  // Prüfe Session nach Email-Bestätigung
-  const checkSessionAfterEmailConfirm = useCallback(async () => {
-    try {
-      setEmailStatus(null);
-      // Don't try to refresh if there is no session yet (common right after sign-up).
-      const {
-        data: { session: existingSession },
-      } = await supabaseBrowser.auth.getSession();
-
-      if (!existingSession) {
-        setEmailConfirmed(false);
-        setEmailStatus("Keine aktive Sitzung gefunden. Bitte Link in E-Mail nutzen.");
-        return false;
-      }
-
-      // Try to refresh tokens/user state, but tolerate missing/invalid refresh tokens.
-      // We'll still fetch the user below to determine confirmation state.
-      try {
-        await supabaseBrowser.auth.refreshSession();
-      } catch {
-        // ignore
-      }
-
-      const { data: userData, error: userError } = await supabaseBrowser.auth.getUser();
-      const user = userData?.user;
-      if (userError || !user) {
-        setEmailConfirmed(false);
-        setEmailStatus("Keine aktive Sitzung gefunden. Bitte Link in E-Mail nutzen.");
-        return false;
-      }
-
-      const isConfirmed = Boolean(user.email_confirmed_at);
-
-      if (!isConfirmed) {
-        setEmailConfirmed(false);
-        // Do not set error immediately if we are just polling/checking, 
-        // but if triggered by user action (handled in wrapper) we might wants feedback.
-        // We returns false and let caller handle UI text if needed.
-        return false;
-      }
-
-      setEmailConfirmed(true);
-
-      const { data: profile } = await supabaseBrowser
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const profileTyped = profile as Profile | null;
-      // Email confirmation is handled by Supabase Auth; profile does not store a boolean for it.
-
-      const isComplete = isProfileComplete(profileTyped);
-
-      if (isConfirmed && isComplete) {
-        router.push("/app-home");
-        return true;
-      }
-
-      if (isConfirmed) {
-        setStep("role");
-      } else {
-        // Should not happen if isConfirmed is true
-        setEmailConfirmed(false);
-        setEmailStatus("Du hast noch nicht bestätigt.");
-        return false;
-      }
-
-      if (profileTyped) {
-        setProfileData((prev) => ({
-          ...prev,
-          role: inferOnboardingRole(profileTyped),
-          fullName: profileTyped.full_name || "",
-          birthdate: profileTyped.birthdate || "",
-          region: profileTyped.city || user.user_metadata?.city || "",
-          marketId: profileTyped.market_id || null,
-        }));
-      }
-      return true;
-    } catch (err) {
-      const msg = getErrorMessage(err, "");
-      // This can happen if cookies contain a stale/invalid refresh token; treat as "no session" UX.
-      if (!msg.includes("Invalid Refresh Token") && !msg.includes("Refresh Token")) {
-        console.error("Fehler beim Prüfen der Session:", err);
-      }
-      setEmailStatus("Prüfung fehlgeschlagen. Bitte später erneut versuchen.");
-      return false;
-    }
-  }, [router]);
-
+  // Make sure we jump to auth mode Step if initialMode is set
   useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const id = setInterval(() => {
-      setResendCooldown((v) => (v > 0 ? v - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [resendCooldown]);
-
-  // Höre auf Auth-State-Änderungen (nur für Email-Confirm, nicht für direkten Login)
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabaseBrowser.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session && step === "email-confirm") {
-        await checkSessionAfterEmailConfirm();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [checkSessionAfterEmailConfirm, step]);
-
-  const handleSignUp = async () => {
-    if (!email.trim() || !password || password.length < 6) {
-      setError("Bitte gib eine gültige E-Mail und ein Passwort (mindestens 6 Zeichen) ein.");
-      return;
+    if (initialMode && step === "welcome") {
+      setStep("mode");
     }
+  }, [initialMode]);
 
+  const handleResendConfirmation = async (e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (resendCooldown > 0) return;
     setLoading(true);
+    setResendMessage("");
     setError(null);
-
     try {
-      const { error } = await signUpWithEmail(email, password, {
-        city: profileData.region,
-        full_name: profileData.fullName,
-      });
+      const { error } = await supabaseBrowser.auth.resend({ type: 'signup', email });
       if (error) throw error;
-      setStep("email-confirm");
-      setEmailStatus("Wir haben dir eine Bestätigung gesendet. Bitte prüfe dein Postfach.");
+      setResendMessage("E-Mail wurde erneut gesendet.");
+      setResendCooldown(60);
     } catch (err: unknown) {
-      setError(
-        getErrorMessage(err, "Registrierung fehlgeschlagen. Bitte versuche es erneut.")
-      );
+      setError(getErrorMessage(err, "Fehler beim Senden."));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignIn = async () => {
-    if (!email.trim() || !password) {
-      setError("Bitte gib E-Mail und Passwort ein.");
-      return;
+  const handleVerifyCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!code) return;
+    setLoading(true);
+    setCodeError(null);
+    try {
+      const { data, error } = await supabaseBrowser.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'signup'
+      });
+      if (error) throw error;
+      await checkSessionAfterEmailConfirm();
+    } catch (err: unknown) {
+      setCodeError(getErrorMessage(err, "Code ungültig."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkSessionAfterEmailConfirm = useCallback(async () => {
+    const { data: { session } } = await supabaseBrowser.auth.getSession();
+    if (!session) return false;
+
+    const { data: profile } = await supabaseBrowser
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    const profileTyped = profile as Profile | null;
+    const isComplete = isProfileComplete(profileTyped);
+    const isConfirmed = !!session.user.email_confirmed_at; // Or checking session status
+
+    if (isConfirmed && isComplete) {
+      router.push(redirectTo || "/app-home");
+      return true;
     }
 
+    if (isConfirmed) {
+      if (profileTyped && !profileData.role) {
+        const inferred = inferOnboardingRole(profileTyped);
+        if (inferred) setStep("role"); // Or directly to profile?
+        else setStep("role");
+      } else {
+        setStep("role");
+      }
+    }
+
+    if (profileTyped) {
+      setProfileData((prev) => ({
+        ...prev,
+        role: inferOnboardingRole(profileTyped),
+        fullName: profileTyped.full_name || "",
+        birthdate: profileTyped.birthdate || "",
+        region: profileTyped.city || "",
+        marketId: profileTyped.market_id || null,
+      }));
+    }
+    return true;
+  }, [router, redirectTo, profileData.role]);
+
+
+  const handleSignIn = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const { error } = await signInWithEmail(email, password);
-      if (error) {
-        if (error.message.includes("Invalid") || error.message.includes("password")) {
-          throw new Error("E-Mail oder Passwort stimmen nicht. Bitte überprüfe deine Eingaben.");
-        }
-        throw error;
-      }
-      // Direkt zu /app weiterleiten nach erfolgreichem Login
-      router.push("/app-home");
+      await signInWithEmail(email, password);
+      router.push(redirectTo || "/app-home");
     } catch (err: unknown) {
-      const message = getErrorMessage(
-        err,
-        "Anmeldung fehlgeschlagen. Bitte überprüfe deine Daten."
-      );
-      setError(message);
-      if (message.toLowerCase().includes("bestätigt") || message.toLowerCase().includes("confirm")) {
-        setStep("email-confirm");
-        setEmailStatus("Deine E-Mail ist noch nicht bestätigt. Bitte prüfe dein Postfach.");
-      }
+      setError(getErrorMessage(err, "Anmeldung fehlgeschlagen."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await signUpWithEmail(email, password, {
+        city: profileData.region,
+        full_name: "",
+        market_id: profileData.marketId
+      });
+      setStep("email-confirm");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Registrierung fehlgeschlagen."));
+    } finally {
       setLoading(false);
     }
   };
 
   const handleEmailConfirmation = async () => {
     setLoading(true);
-    setError(null);
-    setEmailStatus(null);
-
-    try {
-      const confirmed = await checkSessionAfterEmailConfirm();
-      if (!confirmed) {
-        setEmailStatus(
-          "Deine E-Mail ist noch nicht bestätigt. Bitte bestätige sie, bevor du fortfährst."
-        );
-      }
-    } catch (err: unknown) {
-      setError(
-        getErrorMessage(err, "E-Mail noch nicht bestätigt. Bitte versuche es erneut.")
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleVerifyCode = async () => {
-    setCodeError(null);
-    setCodeMessage(null);
-    if (codeLocked) {
-      setCodeError("Zu viele Versuche. Bitte nutze den Bestätigungslink.");
-      return;
-    }
-    const trimmed = code.trim();
-    if (!/^\d{8}$/.test(trimmed)) {
-      setCodeError("Bitte gib den 8-stelligen Code ein.");
-      return;
-    }
-    try {
-      setLoading(true);
-      const res = await verifySignupCode(supabaseBrowser as any, email, trimmed);
-      if (!res.ok) throw new Error(res.error!);
-      setCodeMessage("Code erfolgreich bestätigt. Session wird geprüft...");
-      try {
-        await supabaseBrowser.auth.refreshSession();
-      } catch { }
-      const ok = await checkSessionAfterEmailConfirm();
-      if (!ok) {
-        setEmailStatus("Noch nicht bestätigt. Bitte nutze den Link in der E-Mail.");
-      }
-    } catch (err) {
-      setCodeError(getErrorMessage(err, "Ungültiger oder abgelaufener Code."));
-      setToastType("error");
-      setToastMsg("Der Code stimmt nicht");
-      setToastOpen(true);
-      const next = codeAttempts + 1;
-      setCodeAttempts(next);
-      if (next >= 5) {
-        setCodeLocked(true);
-        setCodeError("Zu viele Versuche. Bitte nutze den Bestätigungslink.");
-      }
-      try {
-        const { data: { session } } = await supabaseBrowser.auth.getSession();
-        if (session?.user?.id) {
-          await supabaseBrowser
-            .from("verification_attempts")
-            .upsert({ id: session.user.id, attempts: next });
-        }
-      } catch { }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendConfirmation = async () => {
-    if (resendCooldown > 0) return;
-    setLoading(true);
-    setResendMessage(null);
-    setEmailStatus(null);
-    try {
-      const { error } = await supabaseBrowser.auth.resend({
-        type: "signup",
-        email,
-      });
-      if (error) throw error;
-      setResendMessage("Link gesendet. Bitte prüfe dein Postfach.");
-      setResendCooldown(30);
-      setToastType("success");
-      setToastMsg("Neue Bestätigung gesendet");
-      setToastOpen(true);
-    } catch (err: unknown) {
-      setResendMessage("Konnte nicht senden — versuche später erneut.");
-      setToastType("error");
-      setToastMsg("Konnte nicht senden — versuche später erneut");
-      setToastOpen(true);
-    } finally {
-      setLoading(false);
-    }
+    await checkSessionAfterEmailConfirm();
+    setLoading(false);
   };
 
   const handleCompanyContact = async () => {
-    if (!profileData.companyName || !profileData.companyEmail || !profileData.companyMessage) {
-      setError("Bitte fülle alle Felder aus.");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session?.user?.id) {
-        throw new Error("Keine aktive Session gefunden.");
-      }
-
-      await saveProfile(supabaseBrowser, {
-        id: session.user.id,
-        full_name: profileData.fullName.trim(),
-        birthdate: profileData.birthdate,
-        city: profileData.region.trim(),
-        market_id: profileData.marketId,
-        account_type: "job_provider",
-        provider_kind: "company",
-        company_name: profileData.companyName.trim(),
-        company_contact_email: profileData.companyEmail.trim(),
-        company_message: profileData.companyMessage.trim(),
-      });
-
-      router.push("/info");
-    } catch (err: unknown) {
-      setError(
-        getErrorMessage(err, "Fehler beim Absenden. Bitte versuche es erneut.")
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    setStep("summary");
   };
 
   const handleCompleteOnboarding = async () => {
-    if (!profileData.role || !profileData.fullName || !profileData.birthdate || !profileData.region) {
-      setError("Bitte fülle alle Felder aus.");
-      return;
-    }
-
     setIsSaving(true);
     setError(null);
-
     try {
       const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session?.user?.id) {
-        throw new Error("Keine aktive Session gefunden. Bitte melde dich erneut an.");
-      }
+      if (!session) throw new Error("Keine aktive Session gefunden.");
 
+      if (!profileData.role) throw new Error("Keine Rolle ausgewählt.");
       const mapped = mapOnboardingRoleToAccount(profileData.role);
+
       await saveProfile(supabaseBrowser, {
         id: session.user.id,
         full_name: profileData.fullName.trim(),
@@ -444,9 +261,12 @@ export function OnboardingWizard({
         city: profileData.region.trim(),
         market_id: profileData.marketId,
         ...mapped,
+        company_name: profileData.role === "company" ? profileData.companyName : null,
+        company_contact_email: profileData.role === "company" ? profileData.companyEmail : null,
+        company_message: profileData.role === "company" ? profileData.companyMessage : null,
       });
 
-      router.push("/app-home");
+      router.push(redirectTo || "/app-home");
     } catch (err: unknown) {
       setError(
         getErrorMessage(err, "Speichern fehlgeschlagen. Bitte versuche es erneut.")

@@ -5,11 +5,13 @@ import { OnboardingWizard } from "./OnboardingWizard";
 
 type AuthBridgeProps = {
   authState: AuthState;
+  redirectTo?: string;
+  initialMode?: "signup" | "signin" | null;
 };
 
-export default function AuthBridge({ authState }: AuthBridgeProps) {
+export default function AuthBridge({ authState, redirectTo, initialMode }: AuthBridgeProps) {
   if (authState.state === "no-session") {
-    return <OnboardingWizard initialProfile={null} />;
+    return <OnboardingWizard initialProfile={null} redirectTo={redirectTo} initialMode={initialMode} />;
   }
 
   if (authState.state === "email-unconfirmed") {
@@ -18,6 +20,7 @@ export default function AuthBridge({ authState }: AuthBridgeProps) {
         initialProfile={authState.profile}
         forcedStep="email-confirm"
         initialEmail={authState.session.user.email ?? ""}
+        redirectTo={redirectTo}
       />
     );
   }
@@ -27,6 +30,7 @@ export default function AuthBridge({ authState }: AuthBridgeProps) {
       <OnboardingWizard
         initialProfile={authState.profile}
         initialEmail={authState.session.user.email ?? ""}
+        redirectTo={redirectTo}
       />
     );
   }

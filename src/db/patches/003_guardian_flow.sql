@@ -62,7 +62,7 @@ BEGIN
     SELECT * INTO invitation_record FROM guardian_invitations 
     WHERE token = token_input AND status = 'active' AND expires_at > NOW();
 
-    IF invitation_record IS NULL THEN
+    IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid or expired token');
     END IF;
 
@@ -102,7 +102,7 @@ BEGIN
     SELECT * INTO invitation_record FROM guardian_invitations 
     WHERE token = token_input AND status = 'active' AND expires_at > NOW();
 
-    IF invitation_record IS NULL THEN
+    IF NOT FOUND THEN
         RETURN jsonb_build_object('valid', false, 'error', 'Invalid or expired token');
     END IF;
 
