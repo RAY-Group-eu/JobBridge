@@ -61,11 +61,6 @@ export default async function ActivityPage() {
 
     const applications = (data ?? []) as unknown as AppWithFullJob[];
 
-    // Calculate stats
-    const total = applications?.length || 0;
-    const accepted = applications?.filter(a => a.status === 'accepted').length || 0;
-    const rejected = applications?.filter(a => a.status === 'rejected').length || 0;
-
     return (
         <div className="container mx-auto py-12 px-4 md:px-6">
             <div className="mx-auto max-w-4xl space-y-8">

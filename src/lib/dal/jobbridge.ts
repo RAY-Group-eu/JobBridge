@@ -418,7 +418,36 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     };
   }) : [];
 
-  items = await enrichMarketsIfPossible(supabase, items, debug);
+  // Enrich markets inline if needed (combined with single pass instead of separate map)
+  const marketIds = Array.from(new Set(items.filter(j => j.market_id && !j.market_name).map(j => j.market_id).filter(Boolean))) as string[];
+  
+  if (marketIds.length > 0) {
+    const regionRes = await supabase.from("regions_live").select("id, display_name, brand_prefix").in("id", marketIds);
+    
+    debug.regions_live = {
+      attempted: true,
+      ids: marketIds.length,
+      status: regionRes.status,
+      error: regionRes.error ? toErrorInfo(regionRes.error, { status: regionRes.status, statusText: regionRes.statusText }) : null,
+    };
+
+    if (!regionRes.error && Array.isArray(regionRes.data)) {
+      const marketMap = new Map<string, { display_name?: string | null; brand_prefix?: string | null }>();
+      for (const r of regionRes.data) {
+        marketMap.set(String(r.id), { display_name: r.display_name ?? null, brand_prefix: r.brand_prefix ?? null });
+      }
+
+      // Apply market enrichment in place
+      items = items.map((j) => {
+        if (!j.market_id || j.market_name) return j;
+        const m = marketMap.get(j.market_id);
+        if (!m) return j;
+        return { ...j, market_name: m.display_name ?? null, brand_prefix: m.brand_prefix ?? null };
+      });
+    }
+  } else {
+    debug.regions_live = { attempted: false, reason: "no missing markets" };
+  }
 
   log("fetchJobs.live.table.ok", { rows: items.length });
   return { ok: true, data: items, debug };

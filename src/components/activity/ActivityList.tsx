@@ -45,10 +45,15 @@ interface ActivityListProps {
 export function ActivityList({ applications }: ActivityListProps) {
     const [selectedJob, setSelectedJob] = useState<JobRow | null>(null);
 
-    const total = applications.length;
-    const accepted = applications.filter(a => a.status === 'accepted').length;
-    const rejected = applications.filter(a => a.status === 'rejected').length;
-    const pending = total - accepted - rejected;
+    // Calculate stats in a single pass instead of multiple filter operations
+    const stats = applications.reduce((acc, app) => {
+        acc.total++;
+        if (app.status === 'accepted') acc.accepted++;
+        else if (app.status === 'rejected') acc.rejected++;
+        return acc;
+    }, { total: 0, accepted: 0, rejected: 0 });
+    
+    const pending = stats.total - stats.accepted - stats.rejected;
 
     const handleOpenJob = (app: AppWithFullJob) => {
         if (app.job) {
@@ -65,7 +70,7 @@ export function ActivityList({ applications }: ActivityListProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                     label="Gesamt"
-                    value={total}
+                    value={stats.total}
                     icon={<Briefcase className="text-blue-400" size={20} />}
                     bg="bg-blue-500/10"
                     border="border-blue-500/20"
@@ -79,14 +84,14 @@ export function ActivityList({ applications }: ActivityListProps) {
                 />
                 <StatCard
                     label="Zusagen"
-                    value={accepted}
+                    value={stats.accepted}
                     icon={<CheckCircle2 className="text-emerald-400" size={20} />}
                     bg="bg-emerald-500/10"
                     border="border-emerald-500/20"
                 />
                 <StatCard
                     label="Absagen"
-                    value={rejected}
+                    value={stats.rejected}
                     icon={<XCircle className="text-red-400" size={20} />}
                     bg="bg-red-500/10"
                     border="border-red-500/20"
