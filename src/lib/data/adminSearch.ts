@@ -104,10 +104,34 @@ export async function searchAdminEntities(query: string, limit = 8): Promise<{ i
       };
     }
 
+    // Both sources are already sorted by created_at DESC from the database
+    // Use merge algorithm for O(n) instead of sorting for O(n log n)
+    const mergedItems: AdminSearchResult[] = [];
+    let userIdx = 0;
+    let jobIdx = 0;
+    
+    const userItems = items.filter(i => i.entity_type === "user");
+    const jobItems = items.filter(i => i.entity_type === "job");
+
+    while (mergedItems.length < safeLimit && (userIdx < userItems.length || jobIdx < jobItems.length)) {
+      if (userIdx >= userItems.length) {
+        mergedItems.push(jobItems[jobIdx++]);
+      } else if (jobIdx >= jobItems.length) {
+        mergedItems.push(userItems[userIdx++]);
+      } else {
+        // Both available, pick the more recent one
+        const userTime = toTimestamp(userItems[userIdx].created_at);
+        const jobTime = toTimestamp(jobItems[jobIdx].created_at);
+        if (userTime >= jobTime) {
+          mergedItems.push(userItems[userIdx++]);
+        } else {
+          mergedItems.push(jobItems[jobIdx++]);
+        }
+      }
+    }
+
     return {
-      items: items
-        .sort((left, right) => toTimestamp(right.created_at) - toTimestamp(left.created_at))
-        .slice(0, safeLimit),
+      items: mergedItems,
       error: null,
     };
   } catch (error) {

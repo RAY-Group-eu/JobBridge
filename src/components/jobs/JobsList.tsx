@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { JobCard } from "@/components/jobs/JobCard";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
@@ -21,8 +21,11 @@ export function JobsList({ jobs, isDemo, canApply, guardianStatus }: JobsListPro
 
     const handleClose = useCallback(() => setSelectedJob(null), []);
 
-    const openJobs = jobs.filter(j => !j.is_applied);
-    const appliedJobs = jobs.filter(j => j.is_applied);
+    // Memoize filtered jobs to avoid re-filtering on every render
+    const { openJobs, appliedJobs } = useMemo(() => ({
+        openJobs: jobs.filter(j => !j.is_applied),
+        appliedJobs: jobs.filter(j => j.is_applied),
+    }), [jobs]);
 
     return (
         <>
