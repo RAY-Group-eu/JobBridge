@@ -1,6 +1,12 @@
 import "server-only";
 
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { supabaseServer } from "@/lib/supabaseServer";
+import type { Database } from "@/lib/types/supabase";
+
+type JobRow = Database["public"]["Tables"]["jobs"]["Row"] & {
+  poster: { full_name: string | null; email: string | null } | null;
+  market_region: { city: string | null } | null;
+};
 
 export type AdminJobListItem = {
   id: string;
@@ -20,25 +26,6 @@ export type AdminJobDetail = AdminJobListItem & {
   category: string | null;
 };
 
-type JobListRow = {
-  id: string;
-  title: string | null;
-  description: string | null;
-  status: string | null;
-  posted_by: string;
-  created_at: string;
-  public_location_label: string | null;
-  wage_hourly: number | null;
-  category: string | null;
-  poster: {
-    full_name: string | null;
-    email: string | null;
-  } | null;
-  market_region: {
-    city: string | null;
-  } | null;
-};
-
 function sanitizeSearchTerm(search: string): string {
   return search.replace(/[,%]/g, " ").trim();
 }
@@ -53,19 +40,19 @@ function normalizeError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function mapJobRow(row: JobListRow): AdminJobDetail {
+function mapJobRow(row: JobRow): AdminJobDetail {
   return {
     id: row.id,
     title: row.title || "Untitled job",
     description: row.description || "",
-    status: row.status || "unknown",
+    status: row.status,
     posted_by: row.posted_by,
     posted_by_name: row.poster?.full_name || null,
     posted_by_email: row.poster?.email || null,
     created_at: row.created_at,
     location_label: row.public_location_label || null,
     market: row.market_region?.city || null,
-    wage_hourly: typeof row.wage_hourly === "number" ? row.wage_hourly : null,
+    wage_hourly: row.wage_hourly ? Number(row.wage_hourly) : null,
     category: row.category || null,
   };
 }
@@ -81,8 +68,8 @@ export async function getAdminJobs(params: {
     const safeOffset = Math.max(0, offset);
     const term = sanitizeSearchTerm(search);
 
-    const adminClient = getSupabaseAdminClient();
-    let query = adminClient
+    const supabase = await supabaseServer();
+    let query = supabase
       .from("jobs")
       .select(
         "id, title, description, status, posted_by, created_at, public_location_label, wage_hourly, category, poster:profiles!jobs_posted_by_fkey(full_name, email), market_region:regions_live!jobs_market_id_fkey(city)",
@@ -105,7 +92,10 @@ export async function getAdminJobs(params: {
       };
     }
 
-    const rows = (data ?? []) as unknown as JobListRow[];
+    // Cast needed because the join result shape isn't fully inferred by TS complex joins sometimes
+    // But it's much safer than 'unknown'
+    const rows = (data ?? []) as any as JobRow[];
+
     return {
       items: rows.map((row) => {
         const mapped = mapJobRow(row);
@@ -136,8 +126,8 @@ export async function getAdminJobs(params: {
 
 export async function getAdminJob(jobId: string): Promise<{ item: AdminJobDetail | null; error: string | null }> {
   try {
-    const adminClient = getSupabaseAdminClient();
-    const { data, error } = await adminClient
+    const supabase = await supabaseServer();
+    const { data, error } = await supabase
       .from("jobs")
       .select(
         "id, title, description, status, posted_by, created_at, public_location_label, wage_hourly, category, poster:profiles!jobs_posted_by_fkey(full_name, email), market_region:regions_live!jobs_market_id_fkey(city)",
@@ -158,7 +148,7 @@ export async function getAdminJob(jobId: string): Promise<{ item: AdminJobDetail
     }
 
     return {
-      item: mapJobRow(data as unknown as JobListRow),
+      item: mapJobRow(data as any as JobRow),
       error: null,
     };
   } catch (error) {

@@ -40,7 +40,7 @@ async function createRealJob(
             description: payload.description,
             wage_hourly: payload.wage_hourly,
             status: payload.status as Database["public"]["Enums"]["job_status"],
-            category: payload.category as Database["public"]["Enums"]["job_category"],
+            category: payload.category,
             address_reveal_policy: payload.address_reveal_policy ?? "after_apply",
             public_location_label: payload.public_location_label || "",
             public_lat: payload.public_lat ?? null,

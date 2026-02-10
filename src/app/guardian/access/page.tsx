@@ -21,10 +21,10 @@ function GuardianAccessContent() {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const { data: { session } } = await supabaseBrowser.auth.getSession();
-            setIsAuthenticated(!!session);
-            if (session?.user?.email) {
-                setCurrentUserEmail(session.user.email);
+            const { data: { user } } = await supabaseBrowser.auth.getUser();
+            setIsAuthenticated(!!user);
+            if (user?.email) {
+                setCurrentUserEmail(user.email);
             }
         };
         checkAuth();

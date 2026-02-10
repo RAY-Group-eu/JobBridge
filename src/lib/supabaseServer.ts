@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/lib/types/supabase";
 
 export async function supabaseServer() {
@@ -20,22 +20,26 @@ export async function supabaseServer() {
         schema: "public",
       },
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           } catch {
-            /* no-op in read-only contexts */
+            // no-op when called from a Server Component (read-only context).
+            // The middleware will handle the cookie refresh in that case.
           }
         },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
-          } catch {
-            /* no-op in read-only contexts */
-          }
+      },
+      global: {
+        fetch: (url, options) => {
+          return fetch(url, {
+            ...options,
+            cache: "no-store",
+          });
         },
       },
     }

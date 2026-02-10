@@ -24,40 +24,48 @@ export function MarketProvider({ children, defaultMarket }: MarketProviderProps)
     const [isLoading, setIsLoading] = useState(!defaultMarket);
 
     useEffect(() => {
-        if (defaultMarket) return;
+        if (defaultMarket) {
+            console.log("MarketProvider: Using server-provided market:", defaultMarket);
+            return;
+        }
+        console.log("MarketProvider: No server market, starting client fetch...");
 
         const loadMarket = async () => {
-            const { data: { user } } = await supabaseBrowser.auth.getUser();
-            if (!user) {
-                setIsLoading(false);
-                return;
-            }
+            try {
+                const { data: { user } } = await supabaseBrowser.auth.getUser();
+                if (!user) {
+                    setIsLoading(false);
+                    return;
+                }
 
-            // Fetch profile's market_id
-            const { data: profile } = await supabaseBrowser
-                .from("profiles")
-                .select("market_id")
-                .eq("id", user.id)
-                .single();
-
-            if (profile?.market_id) {
-                const { data: marketData } = await supabaseBrowser
-                    .from("regions_live")
-                    .select("id, slug, city, is_live, display_name, brand_prefix")
-                    .eq("id", profile.market_id)
+                // Fetch profile's market_id
+                const { data: profile } = await supabaseBrowser
+                    .from("profiles")
+                    .select("market_id")
+                    .eq("id", user.id)
                     .single();
 
-                if (marketData) {
-                    setMarket({
-                        id: marketData.id,
-                        slug: marketData.slug || marketData.city.toLowerCase(),
-                        display_name: marketData.display_name || marketData.city,
-                        brand_prefix: marketData.brand_prefix || "JobBridge",
-                        is_live: marketData.is_live
-                    });
+                if (profile?.market_id) {
+                    const { data: marketData } = await supabaseBrowser
+                        .from("regions_live")
+                        .select("id, city, is_live, display_name, brand_prefix")
+                        .eq("id", profile.market_id)
+                        .single();
+
+                    if (marketData) {
+                        setMarket({
+                            id: marketData.id,
+                            display_name: marketData.display_name || marketData.city,
+                            brand_prefix: marketData.brand_prefix || "JobBridge",
+                            is_live: marketData.is_live,
+                        });
+                    }
                 }
+            } catch (err) {
+                console.error("[MarketProvider] Failed to load market:", err);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         loadMarket();

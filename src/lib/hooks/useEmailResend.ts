@@ -38,7 +38,7 @@ export function useEmailResend(email: string): UseEmailResendReturn {
             const { error: err } = await supabaseBrowser.auth.resend({
                 type: "signup",
                 email,
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+                options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/verified` },
             });
             if (err) throw err;
 

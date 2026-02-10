@@ -48,11 +48,19 @@ export const getCurrentSessionAndProfile = async (): Promise<{
   systemRoles: string[];
 }> => {
   const supabase = await supabaseServer();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
 
-  if (!session?.user?.id) {
+  // Use getUser() first — this contacts the Supabase Auth server and
+  // refreshes the session if the access token has expired.
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user?.id) {
+    return { session: null, profile: null, systemRoles: [] };
+  }
+
+  // Now safe to read session metadata (tokens are already refreshed by getUser above)
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
     return { session: null, profile: null, systemRoles: [] };
   }
 

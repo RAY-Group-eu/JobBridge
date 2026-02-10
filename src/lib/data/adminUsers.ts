@@ -1,7 +1,13 @@
 import "server-only";
 
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { supabaseServer } from "@/lib/supabaseServer";
 import { sortStaffRoles } from "@/lib/data/adminAuth";
+import type { Database } from "@/lib/types/supabase";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type UserSystemRoleRow = Database["public"]["Tables"]["user_system_roles"]["Row"] & {
+  role: { name: string | null } | null;
+};
 
 export type AdminUserListItem = {
   id: string;
@@ -19,26 +25,6 @@ export type AdminUserListItem = {
 
 export type AdminUserDetail = AdminUserListItem;
 
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  city: string | null;
-  account_type: string | null;
-  provider_kind: string | null;
-  guardian_status: string | null;
-  provider_verification_status: string | null;
-  email_verified_at: string | null;
-  created_at: string;
-};
-
-type UserRoleRow = {
-  user_id: string;
-  role: {
-    name: string | null;
-  } | null;
-};
-
 function sanitizeSearchTerm(search: string): string {
   return search.replace(/[,%]/g, " ").trim();
 }
@@ -53,7 +39,7 @@ function normalizeError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function mapRolesByUser(rows: UserRoleRow[]): Record<string, string[]> {
+function mapRolesByUser(rows: UserSystemRoleRow[]): Record<string, string[]> {
   const map: Record<string, string[]> = {};
 
   for (const row of rows) {
@@ -81,8 +67,10 @@ async function getRolesByUserIds(userIds: string[]): Promise<{
   }
 
   try {
-    const adminClient = getSupabaseAdminClient();
-    const { data, error } = await adminClient
+    const supabase = await supabaseServer();
+    // Using supabaseServer relies on the current user's permissions (RLS)
+    // Ensure the current user has access to read user_system_roles (e.g. via an admin policy)
+    const { data, error } = await supabase
       .from("user_system_roles")
       .select("user_id, role:system_roles(name)")
       .in("user_id", userIds);
@@ -96,7 +84,7 @@ async function getRolesByUserIds(userIds: string[]): Promise<{
     }
 
     return {
-      rolesByUser: mapRolesByUser((data ?? []) as unknown as UserRoleRow[]),
+      rolesByUser: mapRolesByUser((data ?? []) as unknown as UserSystemRoleRow[]),
       error: null,
     };
   } catch (error) {
@@ -122,8 +110,8 @@ export async function getAdminUsers(params: {
     const safeOffset = Math.max(0, offset);
     const term = sanitizeSearchTerm(search);
 
-    const adminClient = getSupabaseAdminClient();
-    let query = adminClient
+    const supabase = await supabaseServer();
+    let query = supabase
       .from("profiles")
       .select("id, full_name, email, city, account_type, provider_kind, guardian_status, provider_verification_status, email_verified_at, created_at")
       .order("created_at", { ascending: false })
@@ -144,7 +132,7 @@ export async function getAdminUsers(params: {
       };
     }
 
-    const rows = (data ?? []) as unknown as ProfileRow[];
+    const rows = (data ?? []) as ProfileRow[];
     const roleResult = await getRolesByUserIds(rows.map((row) => row.id));
 
     const items = rows.map((row): AdminUserListItem => ({
@@ -178,15 +166,15 @@ export async function getAdminUsers(params: {
 
 export async function getAdminUser(userId: string): Promise<{ item: AdminUserDetail | null; error: string | null }> {
   try {
-    const adminClient = getSupabaseAdminClient();
+    const supabase = await supabaseServer();
 
     const [profileResult, roleResult] = await Promise.all([
-      adminClient
+      supabase
         .from("profiles")
         .select("id, full_name, email, city, account_type, provider_kind, guardian_status, provider_verification_status, email_verified_at, created_at")
         .eq("id", userId)
         .maybeSingle(),
-      adminClient
+      supabase
         .from("user_system_roles")
         .select("user_id, role:system_roles(name)")
         .eq("user_id", userId),
@@ -209,12 +197,12 @@ export async function getAdminUser(userId: string): Promise<{ item: AdminUserDet
     }
 
     const roles = sortStaffRoles(
-      ((roleResult.data ?? []) as unknown as UserRoleRow[])
+      ((roleResult.data ?? []) as unknown as UserSystemRoleRow[])
         .map((row) => row.role?.name)
         .filter((value): value is string => Boolean(value)),
     );
 
-    const row = profileResult.data as unknown as ProfileRow;
+    const row = profileResult.data as ProfileRow;
 
     return {
       item: {

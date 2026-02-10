@@ -9,7 +9,7 @@ import type { ErrorInfo } from "@/lib/types/jobbridge";
 import type { AccountType } from "@/lib/types";
 import { Database } from "@/lib/types/supabase";
 
-type Result<T> = { ok: true; data: T; debug: Record<string, unknown> } | { ok: false; error: ErrorInfo; debug: Record<string, unknown> };
+type Result<T> = { ok: true; data: T } | { ok: false; error: ErrorInfo };
 
 const createJobSchema = z.object({
     title: z.string().min(5, "Titel muss mindestens 5 Zeichen lang sein."),
@@ -22,8 +22,8 @@ const createJobSchema = z.object({
 
 type CreateJobActionState =
     | null
-    | { status: "error"; error: ErrorInfo; debug?: Record<string, unknown> }
-    | { status: "partial"; jobId: string; error: ErrorInfo; debug?: Record<string, unknown> };
+    | { status: "error"; error: ErrorInfo }
+    | { status: "partial"; jobId: string; error: ErrorInfo };
 
 export async function createJob(_prevState: CreateJobActionState, formData: FormData) {
     const supabase = await supabaseServer();
@@ -57,7 +57,7 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
     const baseAccountType = (profile as unknown as { account_type?: AccountType | null } | null)?.account_type ?? null;
     const viewRes = await getEffectiveView({ userId: user.id, baseAccountType });
     if (!viewRes.ok) {
-        const state: CreateJobActionState = { status: "error", error: viewRes.error, debug: viewRes.debug };
+        const state: CreateJobActionState = { status: "error", error: viewRes.error };
         return state;
     }
 
@@ -137,7 +137,7 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
 
         const retryRes = await retrySaveJobPrivateDetails({ jobId: existingJobId, privateDetails });
         if (!retryRes.ok) {
-            const state: CreateJobActionState = { status: "partial", jobId: existingJobId, error: retryRes.error, debug: retryRes.debug };
+            const state: CreateJobActionState = { status: "partial", jobId: existingJobId, error: retryRes.error };
             return state;
         }
 
@@ -166,12 +166,12 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
     });
 
     if (!res.ok) {
-        const state: CreateJobActionState = { status: "error", error: res.error, debug: res.debug };
+        const state: CreateJobActionState = { status: "error", error: res.error };
         return state;
     }
 
     if (res.data.outcome === "partial") {
-        const state: CreateJobActionState = { status: "partial", jobId: res.data.jobId, error: res.data.privateError, debug: res.debug };
+        const state: CreateJobActionState = { status: "partial", jobId: res.data.jobId, error: res.data.privateError };
         return state;
     }
 
@@ -188,11 +188,10 @@ function toErrorInfo(error: unknown): ErrorInfo {
 
 export async function updateApplicationStatus(
     applicationId: string,
-    status: Database["public"]["Enums"]["application_status"], // e.g. 'accepted', 'rejected'
+    status: Database["public"]["Enums"]["application_status"],
     rejectionReason?: string
 ): Promise<Result<void>> {
     const supabase = await supabaseServer();
-    const debug: Record<string, unknown> = { fn: "updateApplicationStatus", applicationId, status };
 
     const updatePayload: any = { status };
     if (status === 'rejected' && rejectionReason) {
@@ -204,9 +203,96 @@ export async function updateApplicationStatus(
         .update(updatePayload)
         .eq("id", applicationId);
 
-    if (error) {
-        return { ok: false, error: toErrorInfo(error), debug };
+    if (error) return { ok: false, error: toErrorInfo(error) };
+    return { ok: true, data: undefined };
+}
+
+/**
+ * Accept an applicant via the transactional RPC.
+ * This will: accept the chosen application, auto-reject all others,
+ * mark the job as 'filled', and send notifications.
+ */
+export async function acceptApplicant(
+    applicationId: string
+): Promise<Result<{ accepted_user_id: string; auto_rejected_count: number; job_id: string }>> {
+    const supabase = await supabaseServer();
+
+    const { data, error } = await supabase.rpc("accept_applicant", {
+        p_application_id: applicationId,
+    });
+
+    if (error) return { ok: false, error: toErrorInfo(error) };
+
+    const result = data as any;
+    if (!result?.ok) return { ok: false, error: { message: result?.error || "Unbekannter Fehler" } };
+
+    revalidatePath("/app-home/offers");
+    revalidatePath("/app-home/applications");
+    revalidatePath("/app-home/activities");
+
+    return {
+        ok: true,
+        data: {
+            accepted_user_id: result.accepted_user_id,
+            auto_rejected_count: result.auto_rejected_count,
+            job_id: result.job_id,
+        },
+    };
+}
+
+/**
+ * Reject an applicant with a reason. Sends notification to the applicant.
+ */
+export async function rejectApplicant(
+    applicationId: string,
+    rejectionReason?: string
+): Promise<Result<void>> {
+    const supabase = await supabaseServer();
+
+    // Get application + job info for authorization and notification
+    const { data: app } = await supabase
+        .from("applications")
+        .select("user_id, status, job:jobs(posted_by, title)")
+        .eq("id", applicationId)
+        .single<any>();
+
+    if (!app) return { ok: false, error: { message: "Bewerbung nicht gefunden" } };
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || app.job.posted_by !== user.id) {
+        return { ok: false, error: { message: "Nicht berechtigt" } };
     }
 
-    return { ok: true, data: undefined, debug };
+    if (app.status !== 'submitted') {
+        return { ok: false, error: { message: "Bewerbung ist nicht mehr offen" } };
+    }
+
+    const updatePayload: any = { status: 'rejected' as const };
+    if (rejectionReason) {
+        updatePayload.rejection_reason = rejectionReason;
+    }
+
+    const { error } = await supabase
+        .from("applications")
+        .update(updatePayload)
+        .eq("id", applicationId);
+
+    if (error) return { ok: false, error: toErrorInfo(error) };
+
+    // Send notification
+    await (supabase.from("notifications") as any).insert({
+        user_id: app.user_id,
+        type: "application_status",
+        title: "Bewerbung abgelehnt",
+        body: rejectionReason
+            ? `Deine Bewerbung für "${app.job.title}" wurde abgelehnt. Grund: ${rejectionReason}`
+            : `Deine Bewerbung für "${app.job.title}" wurde leider abgelehnt.`,
+        data: { route: "/app-home/activities" },
+    });
+
+    revalidatePath("/app-home/offers");
+    revalidatePath("/app-home/applications");
+    revalidatePath("/app-home/activities");
+
+    return { ok: true, data: undefined };
 }

@@ -5,7 +5,6 @@ import { ProviderTabs } from "./components/ProviderTabs";
 import { MyJobsView } from "./components/MyJobsView";
 import { RegionView } from "./components/RegionView";
 import { fetchJobs, getEffectiveView } from "@/lib/dal/jobbridge";
-import { QueryDebugPanel } from "@/components/debug/QueryDebugPanel";
 import type { JobsListItem } from "@/lib/types/jobbridge";
 
 export default async function OffersPage({
@@ -24,12 +23,6 @@ export default async function OffersPage({
                     <p className="mt-2 text-sm font-mono break-words">
                         {viewRes.error.code ? `${viewRes.error.code}: ` : ""}{viewRes.error.message}
                     </p>
-                    <QueryDebugPanel
-                        title="Offers Debug"
-                        summary={{ source: "unknown", role: "unknown" }}
-                        debug={viewRes.debug}
-                        error={viewRes.error}
-                    />
                 </div>
             </div>
         );
@@ -48,16 +41,16 @@ export default async function OffersPage({
 
     // Data Fetching
     let jobs: JobsListItem[] = [];
-    let regionName = null;
+    let regionName: string | null = null;
     const regionId = profile.market_id;
     let jobsError: { code?: string; message: string } | null = null;
-    let jobsDebug: Record<string, unknown> | null = null;
 
     if (tab === 'region') {
         const supabase = await supabaseServer();
         if (regionId) {
-            const { data } = await supabase.from("regions_live").select("display_name").eq("id", regionId).single();
-            if (data) regionName = data.display_name;
+            // regions_live has `city`, not `display_name`
+            const { data } = await supabase.from("regions_live").select("city").eq("id", regionId).single();
+            if (data) regionName = data.city;
         }
     } else {
         const res = await fetchJobs({
@@ -68,7 +61,6 @@ export default async function OffersPage({
             offset: 0,
         });
 
-        jobsDebug = res.debug;
         if (res.ok) {
             jobs = res.data;
         } else {
@@ -85,7 +77,6 @@ export default async function OffersPage({
                     </h1>
                     <p className="text-slate-400">Verwalte deine Jobs für {isDemo ? "Demo User" : "Rheinbach"}.</p>
                 </div>
-                {/* Global 'New Job' button removed per requirements. Use internal CTA if needed or rely on tabs/empty states. */}
             </div>
 
             {/* Navigation Tabs */}
@@ -100,26 +91,9 @@ export default async function OffersPage({
                             <p className="mt-2 text-xs text-red-200/80 font-mono break-words">
                                 {jobsError.code ? `${jobsError.code}: ` : ""}{jobsError.message}
                             </p>
-                            {jobsDebug && (
-                                <QueryDebugPanel
-                                    title="My Jobs Debug"
-                                    summary={{ source: effectiveView.source, role: effectiveView.viewRole }}
-                                    debug={jobsDebug}
-                                    error={{ message: jobsError.message, code: jobsError.code }}
-                                />
-                            )}
                         </div>
                     ) : (
-                        <>
-                            <MyJobsView jobs={jobs} />
-                            {jobsDebug && (
-                                <QueryDebugPanel
-                                    title="My Jobs Debug"
-                                    summary={{ source: effectiveView.source, role: effectiveView.viewRole }}
-                                    debug={jobsDebug}
-                                />
-                            )}
-                        </>
+                        <MyJobsView jobs={jobs} />
                     )
                 )}
                 {tab === 'region' && <RegionView regionName={regionName || "Rheinbach"} />}

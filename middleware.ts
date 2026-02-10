@@ -28,7 +28,6 @@ export async function middleware(request: NextRequest) {
           });
 
           // Re-create the response once, then apply all cookie mutations.
-          // Important: don't recreate the response per-cookie, or earlier cookie writes get lost.
           response = NextResponse.next({
             request: {
               headers: request.headers,
@@ -43,8 +42,18 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session/cookies on each request so SSR sees the latest auth state
-  const { data: { session } } = await supabase.auth.getSession();
+  // IMPORTANT: Use getUser() instead of getSession() in middleware.
+  // getUser() contacts the Supabase Auth server, validates the JWT, and
+  // refreshes the session if the access token has expired.
+  // Wrap in try/catch: stale/invalid refresh tokens should not crash the middleware.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Invalid or missing refresh token — treat as unauthenticated.
+    // The browser will get fresh tokens on next login.
+  }
 
   const path = request.nextUrl.pathname;
   const isProtectedPath =
@@ -54,7 +63,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/moderation");
 
   if (isProtectedPath) {
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
@@ -62,7 +71,7 @@ export async function middleware(request: NextRequest) {
     const { data: rolesData } = await supabase
       .from("user_system_roles")
       .select("role:system_roles(name)")
-      .eq("user_id", session.user.id);
+      .eq("user_id", user.id);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userRoles = (rolesData || []).map((r: any) => r.role?.name).filter(Boolean);

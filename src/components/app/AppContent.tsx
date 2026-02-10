@@ -8,6 +8,7 @@ import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { Profile } from "@/lib/types";
 import { BRAND_NAME } from "@/lib/constants";
+import { useMarket } from "@/components/providers/MarketProvider";
 
 type AppContentProps = {
   profile: Profile | null;
@@ -15,6 +16,7 @@ type AppContentProps = {
 
 export function AppContent({ profile }: AppContentProps) {
   const router = useRouter();
+  const { currentMarket } = useMarket();
 
   const handleLogout = async () => {
     await supabaseBrowser.auth.signOut();
@@ -34,9 +36,14 @@ export function AppContent({ profile }: AppContentProps) {
             <div className="flex items-center gap-4">
               <LogoBadge size="sm" />
               <div>
-                <h1 className="text-xl font-semibold text-white">
-                  {BRAND_NAME}
+                <h1 className="text-xl font-semibold text-white leading-tight">
+                  {currentMarket?.brand_prefix || BRAND_NAME}
                 </h1>
+                {currentMarket?.display_name && (
+                  <p className="text-xs font-medium text-indigo-400">
+                    {currentMarket.display_name}
+                  </p>
+                )}
               </div>
             </div>
             <ButtonPrimary onClick={handleLogout} className="px-6 py-2 text-sm">
@@ -66,19 +73,19 @@ export function AppContent({ profile }: AppContentProps) {
               }}
             />
             <div className="relative z-10">
-            <div className="text-center space-y-6">
-              <h2 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-                Du bist angemeldet.
-              </h2>
-              <p className="text-lg text-slate-300 leading-relaxed">
-                Hier entsteht deine JobBridge-Plattform. Bald kannst du Jobs suchen oder anbieten.
-              </p>
-              {profile?.full_name && (
-                <p className="text-sm text-slate-400">
-                  Willkommen, {profile.full_name}
+              <div className="text-center space-y-6">
+                <h2 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
+                  Du bist angemeldet.
+                </h2>
+                <p className="text-lg text-slate-300 leading-relaxed">
+                  Hier entsteht deine JobBridge-Plattform. Bald kannst du Jobs suchen oder anbieten.
                 </p>
-              )}
-            </div>
+                {profile?.full_name && (
+                  <p className="text-sm text-slate-400">
+                    Willkommen, {profile.full_name}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -95,4 +102,3 @@ export function AppContent({ profile }: AppContentProps) {
     </div>
   );
 }
-

@@ -28,14 +28,14 @@ export type JobStatus = Database["public"]["Enums"]["job_status"];
 export type JobsListItem = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   posted_by: string;
   status: JobStatus;
   created_at: string;
   market_id: string | null;
   public_location_label: string | null;
   wage_hourly: number | null;
-  // Optional enrichments (RPC or separate lookup).
+  // Optional enrichments (separate lookup).
   distance_km?: number | null;
   market_name?: string | null;
   brand_prefix?: string | null;
@@ -45,7 +45,7 @@ export type JobsListItem = {
     company_name: string | null;
     account_type: AccountType;
   } | null;
-  category?: Database["public"]["Enums"]["job_category"] | null;
+  category?: string | null;
   address_reveal_policy?: string | null;
 };
 

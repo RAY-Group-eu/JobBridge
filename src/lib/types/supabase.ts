@@ -15,6 +15,7 @@ export interface Database {
                     id: string
                     job_id: string
                     message: string | null
+                    rejection_reason: string | null
                     status: Database["public"]["Enums"]["application_status"]
                     user_id: string
                 }
@@ -23,6 +24,7 @@ export interface Database {
                     id?: string
                     job_id: string
                     message?: string | null
+                    rejection_reason?: string | null
                     status?: Database["public"]["Enums"]["application_status"]
                     user_id: string
                 }
@@ -31,6 +33,7 @@ export interface Database {
                     id?: string
                     job_id?: string
                     message?: string | null
+                    rejection_reason?: string | null
                     status?: Database["public"]["Enums"]["application_status"]
                     user_id?: string
                 }
@@ -212,49 +215,64 @@ export interface Database {
             }
             jobs: {
                 Row: {
-                    address_reveal_policy: string
-                    category: Database["public"]["Enums"]["job_category"]
+                    address_reveal_policy: string | null
+                    category: string | null
                     created_at: string
-                    description: string
-                    distance_km: number | null
+                    description: string | null
+                    expires_at: string | null
+                    filled_at: string | null
+                    filled_by: string | null
+                    hiring_mode: Database["public"]["Enums"]["hiring_mode"]
                     id: string
                     market_id: string | null
-                    market_name: string | null
+                    max_applicants: number | null
                     posted_by: string
-                    public_location_label: string
+                    public_lat: number | null
+                    public_lng: number | null
+                    public_location_label: string | null
                     status: Database["public"]["Enums"]["job_status"]
                     title: string
-                    wage_hourly: number
+                    wage_hourly: number | null
                 }
                 Insert: {
-                    address_reveal_policy: string
-                    category: Database["public"]["Enums"]["job_category"]
+                    address_reveal_policy?: string | null
+                    category?: string | null
                     created_at?: string
-                    description: string
-                    distance_km?: number | null
+                    description?: string | null
+                    expires_at?: string | null
+                    filled_at?: string | null
+                    filled_by?: string | null
+                    hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
                     id?: string
                     market_id?: string | null
-                    market_name?: string | null
+                    max_applicants?: number | null
                     posted_by: string
-                    public_location_label: string
+                    public_lat?: number | null
+                    public_lng?: number | null
+                    public_location_label?: string | null
                     status: Database["public"]["Enums"]["job_status"]
                     title: string
-                    wage_hourly: number
+                    wage_hourly?: number | null
                 }
                 Update: {
-                    address_reveal_policy?: string
-                    category?: Database["public"]["Enums"]["job_category"]
+                    address_reveal_policy?: string | null
+                    category?: string | null
                     created_at?: string
-                    description?: string
-                    distance_km?: number | null
+                    description?: string | null
+                    expires_at?: string | null
+                    filled_at?: string | null
+                    filled_by?: string | null
+                    hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
                     id?: string
                     market_id?: string | null
-                    market_name?: string | null
+                    max_applicants?: number | null
                     posted_by?: string
-                    public_location_label?: string
+                    public_lat?: number | null
+                    public_lng?: number | null
+                    public_location_label?: string | null
                     status?: Database["public"]["Enums"]["job_status"]
                     title?: string
-                    wage_hourly?: number
+                    wage_hourly?: number | null
                 }
                 Relationships: [
                     {
@@ -763,24 +781,21 @@ export interface Database {
                 }
                 Returns: Json
             }
+            accept_applicant: {
+                Args: {
+                    p_application_id: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
             account_type: "job_seeker" | "job_provider"
             guardian_status: "none" | "pending" | "linked"
             provider_kind: "private" | "company"
             provider_verification_status: "none" | "pending" | "verified" | "rejected"
-            application_status: "submitted" | "accepted" | "rejected" | "hired"
-            job_category:
-            | "gardening"
-            | "shopping"
-            | "tutoring"
-            | "pet_sitting"
-            | "cleaning"
-            | "tech_help"
-            | "moving_help"
-            | "other"
-            job_status: "open" | "closed" | "in_progress"
-            user_role: "youth" | "company" | "admin"
+            application_status: "submitted" | "withdrawn" | "accepted" | "rejected" | "auto_rejected" | "completed" | "cancelled"
+            hiring_mode: "open_pool" | "first_come" | "direct_hire"
+            job_status: "draft" | "open" | "closed" | "reviewing" | "reserved" | "filled"
         }
         CompositeTypes: {
             [_ in never]: never

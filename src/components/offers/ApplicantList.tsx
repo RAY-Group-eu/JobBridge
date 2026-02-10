@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { User, MessageSquare, Check, X, Clock } from "lucide-react";
+import { User, MessageSquare, Check, X, Clock, AlertTriangle } from "lucide-react";
 import { ApplicationRow } from "@/lib/types/jobbridge";
-import { updateApplicationStatus } from "@/app/app-home/offers/actions";
+import { acceptApplicant, rejectApplicant } from "@/app/app-home/offers/actions";
 import { RejectionModal } from "./RejectionModal";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -14,11 +13,31 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
     const [selectedApplicant, setSelectedApplicant] = useState<ApplicationRow | null>(null);
     const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
     const [loadingId, setLoadingId] = useState<string | null>(null);
+    const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
+    const [acceptResult, setAcceptResult] = useState<{ auto_rejected_count: number } | null>(null);
 
-    const handleAccept = async (appId: string) => {
+    const submittedCount = applications.filter((a) => a.status === "submitted").length;
+
+    const handleAcceptClick = (appId: string) => {
+        // Show confirmation if there are other submitted applications
+        if (submittedCount > 1) {
+            setConfirmAcceptId(appId);
+        } else {
+            executeAccept(appId);
+        }
+    };
+
+    const executeAccept = async (appId: string) => {
+        setConfirmAcceptId(null);
         setLoadingId(appId);
         try {
-            await updateApplicationStatus(appId, "accepted");
+            const res = await acceptApplicant(appId);
+            if (res.ok) {
+                setAcceptResult({ auto_rejected_count: res.data.auto_rejected_count });
+                setTimeout(() => setAcceptResult(null), 5000);
+            } else {
+                console.error("Accept error:", res.error);
+            }
             router.refresh();
         } catch (e) {
             console.error(e);
@@ -36,14 +55,32 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
         if (!selectedApplicant) return;
         setLoadingId(selectedApplicant.id);
         try {
-            // We store the reason string or ID
             const reasonText = message || reasonId;
-            await updateApplicationStatus(selectedApplicant.id, "rejected", reasonText);
+            await rejectApplicant(selectedApplicant.id, reasonText);
             router.refresh();
         } catch (e) {
             console.error(e);
         } finally {
             setLoadingId(null);
+        }
+    };
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "accepted":
+                return { label: "Akzeptiert", icon: <Check size={14} />, className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" };
+            case "rejected":
+                return { label: "Abgesagt", icon: <X size={14} />, className: "bg-red-500/10 border-red-500/20 text-red-400" };
+            case "auto_rejected":
+                return { label: "Auto-Absage", icon: <X size={14} />, className: "bg-orange-500/10 border-orange-500/20 text-orange-400" };
+            case "withdrawn":
+                return { label: "Zurückgezogen", icon: null, className: "bg-slate-500/10 border-slate-500/20 text-slate-400" };
+            case "completed":
+                return { label: "Abgeschlossen", icon: <Check size={14} />, className: "bg-blue-500/10 border-blue-500/20 text-blue-400" };
+            case "cancelled":
+                return { label: "Storniert", icon: <X size={14} />, className: "bg-slate-500/10 border-slate-500/20 text-slate-400" };
+            default:
+                return { label: status, icon: null, className: "bg-slate-500/10 border-slate-500/20 text-slate-400" };
         }
     };
 
@@ -63,12 +100,26 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
 
     return (
         <div className="space-y-4">
+            {/* Success banner after accepting */}
+            {acceptResult && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                    <Check size={20} className="text-emerald-400 shrink-0" />
+                    <p className="text-sm text-emerald-300">
+                        Bewerber akzeptiert!
+                        {acceptResult.auto_rejected_count > 0 && (
+                            <span className="text-emerald-400/70">
+                                {" "}· {acceptResult.auto_rejected_count} andere Bewerbung{acceptResult.auto_rejected_count > 1 ? "en" : ""} automatisch abgesagt.
+                            </span>
+                        )}
+                    </p>
+                </div>
+            )}
+
             {applications.map((app) => (
                 <div key={app.id} className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col md:flex-row items-center gap-6 group hover:border-white/20 transition-all">
                     {/* Avatar / User Info */}
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <div className="relative w-12 h-12 rounded-full overflow-hidden bg-white/10 shrink-0">
-                            {/* Avatar placeholder only since we don't have avatar_url yet */}
                             <div className="w-full h-full flex items-center justify-center text-slate-500">
                                 <User size={24} />
                             </div>
@@ -88,7 +139,7 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                     <div className="flex-1 w-full md:w-auto">
                         {app.message ? (
                             <div className="bg-black/20 p-3 rounded-lg text-sm text-slate-300 italic line-clamp-2 md:line-clamp-1 border border-white/5">
-                                "{app.message}"
+                                &quot;{app.message}&quot;
                             </div>
                         ) : (
                             <span className="text-sm text-slate-500 italic">Keine Nachricht</span>
@@ -108,7 +159,7 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                                     <X size={18} />
                                 </button>
                                 <button
-                                    onClick={() => handleAccept(app.id)}
+                                    onClick={() => handleAcceptClick(app.id)}
                                     disabled={loadingId === app.id}
                                     className="px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
                                 >
@@ -117,22 +168,21 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                                     ) : (
                                         <>
                                             <Check size={18} />
-                                            <span>Akzeptieren</span>
+                                            <span>Zusagen</span>
                                         </>
                                     )}
                                 </button>
                             </>
                         ) : (
-                            <div className={cn(
-                                "px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-2",
-                                app.status === 'accepted' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                                    app.status === 'rejected' ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                                        "bg-slate-500/10 border-slate-500/20 text-slate-400"
-                            )}>
-                                {app.status === 'accepted' && <Check size={14} />}
-                                {app.status === 'rejected' && <X size={14} />}
-                                {app.status === 'accepted' ? "Akzeptiert" : app.status === 'rejected' ? "Abgesagt" : app.status}
-                            </div>
+                            (() => {
+                                const badge = getStatusBadge(app.status);
+                                return (
+                                    <div className={cn("px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-2", badge.className)}>
+                                        {badge.icon}
+                                        {badge.label}
+                                    </div>
+                                );
+                            })()
                         )}
                         <button className="p-2.5 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 transition-colors" title="Chat">
                             <MessageSquare size={18} />
@@ -140,6 +190,42 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                     </div>
                 </div>
             ))}
+
+            {/* Confirmation Dialog for Accept */}
+            {confirmAcceptId && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                <AlertTriangle size={20} className="text-amber-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-white">Bewerber zusagen?</h3>
+                        </div>
+                        <p className="text-slate-300 text-sm mb-2">
+                            Wenn du diesen Bewerber akzeptierst:
+                        </p>
+                        <ul className="text-sm text-slate-400 space-y-1 mb-6 ml-4 list-disc">
+                            <li>Der Job wird als <span className="text-emerald-400 font-medium">vergeben</span> markiert</li>
+                            <li>{submittedCount - 1} andere Bewerbung{submittedCount - 1 > 1 ? "en werden" : " wird"} automatisch <span className="text-orange-400 font-medium">abgesagt</span></li>
+                            <li>Alle Bewerber werden benachrichtigt</li>
+                        </ul>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmAcceptId(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition-colors font-medium"
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                onClick={() => executeAccept(confirmAcceptId)}
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all"
+                            >
+                                Ja, zusagen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <RejectionModal
                 isOpen={isRejectionModalOpen}

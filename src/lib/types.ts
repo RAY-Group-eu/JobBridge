@@ -194,11 +194,8 @@ export type Database = {
           country: string;
           openplz_municipality_key: string | null;
           is_live: boolean;
-          slug?: string | null;
           display_name?: string | null;
           brand_prefix?: string | null;
-          centroid_lat?: number | null;
-          centroid_lng?: number | null;
           created_at: string;
         };
         Insert: {
@@ -209,11 +206,8 @@ export type Database = {
           country?: string;
           openplz_municipality_key?: string | null;
           is_live?: boolean;
-          slug?: string | null;
           display_name?: string | null;
           brand_prefix?: string | null;
-          centroid_lat?: number | null;
-          centroid_lng?: number | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["regions_live"]["Insert"]>;
@@ -418,7 +412,6 @@ export const isProfileComplete = (profile: Profile | null) =>
 
 export type Market = {
   id: string;
-  slug: string;
   display_name: string;
   brand_prefix: string;
   is_live: boolean;

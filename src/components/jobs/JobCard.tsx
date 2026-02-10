@@ -45,7 +45,7 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, onClick }
                                 {job.title}
                             </h3>
                             <p className="text-sm text-slate-400 font-medium flex items-center gap-2">
-                                {job.market_name || "Privater Auftraggeber"}
+                                {job.creator?.company_name || "Privater Auftraggeber"}
                                 {isDemo && (
                                     <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 border border-cyan-400/30 px-1.5 py-0.5 rounded bg-cyan-400/10 ml-2">
                                         Demo
@@ -72,7 +72,7 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, onClick }
                     </div>
                     <div className="flex items-center gap-2">
                         <MapPin size={16} className="text-indigo-400" />
-                        <span className="truncate max-w-[150px]">{job.public_location_label || "Rheinbach"}</span>
+                        <span className="truncate max-w-[150px]">{job.public_location_label || job.market_name || "Standort unbekannt"}</span>
                     </div>
                     {job.distance_km != null && (
                         <div className="flex items-center gap-2 ml-auto text-xs text-slate-500 font-medium">

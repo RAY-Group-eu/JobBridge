@@ -1,58 +1,49 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { type NextRequest } from "next/server"; // Fixed import type
+import type { NextRequest } from "next/server";
 import { Database } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get("code");
-    // Default redirect to /onboarding if 'next' is not provided
     const next = requestUrl.searchParams.get("next") ?? "/onboarding";
 
     if (code) {
-        // Creates a new Response to hold cookies
-        const response = NextResponse.redirect(new URL(next, requestUrl.origin));
+        // Build the final redirect URL upfront so we know where to go.
+        const nextUrl = new URL(next, requestUrl.origin);
+        nextUrl.searchParams.set("verified", "true");
 
-        const supabaseResponse = createServerClient<Database>(
+        // Create the redirect response ONCE — all cookie mutations happen on THIS object.
+        const response = NextResponse.redirect(nextUrl);
+
+        const supabase = createServerClient<Database>(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
-                db: {
-                    schema: "public",
-                },
+                db: { schema: "public" },
                 cookies: {
-                    get(name: string) {
-                        return request.cookies.get(name)?.value;
+                    getAll() {
+                        return request.cookies.getAll();
                     },
-                    set(name: string, value: string, options: CookieOptions) {
-                        response.cookies.set({
-                            name,
-                            value,
-                            ...options,
-                        });
-                    },
-                    remove(name: string, options: CookieOptions) {
-                        response.cookies.set({
-                            name,
-                            value: "",
-                            ...options,
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            response.cookies.set(name, value, options);
                         });
                     },
                 },
             }
         );
 
-        const { error } = await supabaseResponse.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error) {
-            // Append verified=true to the destination URL so the frontend knows we just came from a confirmation
-            const nextUrl = new URL(next, requestUrl.origin);
-            nextUrl.searchParams.set("verified", "true");
-            return NextResponse.redirect(nextUrl);
+            // Session cookies are now on `response` — return it directly.
+            return response;
         }
     }
 
-    // If no code, or error, redirect to origin
-    // We might want to redirect to an error page or back to onboarding with query param
-    return NextResponse.redirect(new URL("/onboarding?error=auth_code_error", requestUrl.origin));
+    // No code or exchange failed → send back to onboarding with error hint
+    return NextResponse.redirect(
+        new URL("/onboarding?error=auth_code_error", requestUrl.origin)
+    );
 }

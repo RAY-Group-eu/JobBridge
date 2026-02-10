@@ -40,9 +40,18 @@ export function MyJobsView({ jobs }: { jobs: JobsListItem[] }) {
                                         <h3 className="text-xl font-semibold text-white group-hover:text-indigo-400 transition-colors">{job.title}</h3>
                                         <span className={cn("px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border",
                                             job.status === 'open' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                                                job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/30 text-slate-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                                                job.status === 'filled' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
+                                                    job.status === 'reviewing' ? 'bg-violet-500/10 border-violet-500/30 text-violet-400' :
+                                                        job.status === 'reserved' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                                                            job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/30 text-slate-400' :
+                                                                'bg-amber-500/10 border-amber-500/30 text-amber-400'
                                         )}>
-                                            {job.status === 'open' ? 'Aktiv' : job.status === 'closed' ? 'Geschlossen' : job.status}
+                                            {job.status === 'open' ? 'Aktiv' :
+                                                job.status === 'filled' ? 'Vergeben' :
+                                                    job.status === 'reviewing' ? 'In Prüfung' :
+                                                        job.status === 'reserved' ? 'Reserviert' :
+                                                            job.status === 'closed' ? 'Geschlossen' :
+                                                                job.status === 'draft' ? 'Entwurf' : job.status}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-slate-400">
