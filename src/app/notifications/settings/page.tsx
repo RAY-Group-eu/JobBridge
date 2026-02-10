@@ -14,10 +14,12 @@ export default async function NotificationSettings() {
         settings = {
             user_id: profile.id,
             updated_at: new Date().toISOString(),
-            push_enabled: false,
             email_enabled: true,
             email_application_updates: true,
+            email_job_updates: true,
             email_messages: true,
+            quiet_hours_end: null,
+            quiet_hours_start: null,
             digest_frequency: "instant"
         };
     }
@@ -52,11 +54,11 @@ export default async function NotificationSettings() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <label htmlFor="email_enabled" className="text-slate-300">Generell aktivieren</label>
-                            <input type="checkbox" name="email_enabled" id="email_enabled" defaultChecked={settings.email_enabled} className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500" />
+                            <input type="checkbox" name="email_enabled" id="email_enabled" defaultChecked={settings?.email_enabled ?? true} className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500" />
                         </div>
                         <div className="flex items-center justify-between">
                             <label htmlFor="email_application_updates" className="text-slate-300">Bei neuen Bewerbungen / Status</label>
-                            <input type="checkbox" name="email_application_updates" id="email_application_updates" defaultChecked={settings.email_application_updates} className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500" />
+                            <input type="checkbox" name="email_application_updates" id="email_application_updates" defaultChecked={settings?.email_application_updates ?? true} className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500" />
                         </div>
                     </div>
                 </div>
@@ -66,7 +68,7 @@ export default async function NotificationSettings() {
                     <div className="space-y-2">
                         {['instant', 'daily', 'weekly'].map((freq) => (
                             <div key={freq} className="flex items-center gap-3">
-                                <input type="radio" name="digest_frequency" value={freq} defaultChecked={settings.digest_frequency === freq} id={`freq_${freq}`} />
+                                <input type="radio" name="digest_frequency" value={freq} defaultChecked={(settings?.digest_frequency ?? 'instant') === freq} id={`freq_${freq}`} />
                                 <label htmlFor={`freq_${freq}`} className="capitalize text-slate-300">{freq}</label>
                             </div>
                         ))}

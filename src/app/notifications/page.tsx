@@ -10,7 +10,7 @@ export default async function NotificationsPage() {
 
     const { data: notifications } = await supabase
         .from("notifications")
-        .select("*")
+        .select("id, type, data, created_at, read_at")
         .eq("user_id", profile.id)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -26,12 +26,12 @@ export default async function NotificationsPage() {
                     </div>
                 ) : (
                     notifications.map((n) => {
-                        const payload = n.payload as { title?: string, body?: string } | null;
+                        const payload = n.data as { title?: string, body?: string } | null;
                         return (
                             <div key={n.id} className={`p-4 rounded-2xl border transition ${n.read_at ? 'bg-white/5 border-white/5 opacity-70' : 'bg-white/10 border-indigo-500/30'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                     <h3 className="font-semibold text-white">{payload?.title || "Benachrichtigung"}</h3>
-                                    <span className="text-xs text-slate-400">{new Date(n.created_at).toLocaleDateString()}</span>
+                                    <span className="text-xs text-slate-400">{n.created_at ? new Date(n.created_at).toLocaleDateString() : ""}</span>
                                 </div>
                                 <p className="text-slate-300 text-sm">{payload?.body || ""}</p>
                             </div>

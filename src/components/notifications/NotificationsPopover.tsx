@@ -42,11 +42,11 @@ export function NotificationsPopover() {
 
             const { data } = await supabase
                 .from("notifications")
-                .select("id, type, payload, created_at, read_at")
+                .select("id, type, data, created_at, read_at")
                 .order("created_at", { ascending: false })
                 .limit(5);
             const mapped = (data ?? []).map((notification) => {
-                const payload = parseNotificationPayload(notification.payload);
+                const payload = parseNotificationPayload(notification.data);
                 const title = payload.title?.trim() ? payload.title : "Benachrichtigung";
                 const body = payload.body?.trim() || payload.message?.trim() || notification.type;
                 return {
@@ -54,8 +54,8 @@ export function NotificationsPopover() {
                     type: notification.type,
                     title,
                     body,
-                    created_at: notification.created_at,
-                    read_at: notification.read_at,
+                    created_at: notification.created_at || "",
+                    read_at: notification.read_at || "",
                 } satisfies NotificationItem;
             });
             setNotifications(mapped);

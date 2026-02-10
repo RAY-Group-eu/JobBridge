@@ -120,14 +120,14 @@ export async function createJobService(
                 p_category: jobParams.category,
                 p_address_reveal_policy: jobParams.address_reveal_policy || 'after_apply',
                 p_public_location_label: jobParams.public_location_label || "",
-                p_public_lat: jobParams.public_lat || null,
-                p_public_lng: jobParams.public_lng || null,
+                p_public_lat: jobParams.public_lat ?? 0,
+                p_public_lng: jobParams.public_lng ?? 0,
                 // Private Details
-                p_address_full: privateParams?.address_full || null,
-                p_private_lat: privateParams?.private_lat || null,
-                p_private_lng: privateParams?.private_lng || null,
-                p_notes: privateParams?.notes || null,
-                p_location_id: privateParams?.location_id || null
+                p_address_full: privateParams?.address_full ?? undefined,
+                p_private_lat: privateParams?.private_lat ?? undefined,
+                p_private_lng: privateParams?.private_lng ?? undefined,
+                p_notes: privateParams?.notes ?? undefined,
+                p_location_id: privateParams?.location_id ?? undefined
             });
 
             if (error) throw error;

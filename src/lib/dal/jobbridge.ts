@@ -172,12 +172,12 @@ function toJobsListItem(row: Database["public"]["Tables"]["jobs"]["Row"] | Datab
     description: row.description ?? null,
     posted_by: row.posted_by,
     status: row.status,
-    created_at: String(row.created_at),
+    created_at: String(row.created_at ?? ""),
     market_id: row.market_id ?? null,
     public_location_label: row.public_location_label ?? null,
     wage_hourly: row.wage_hourly != null ? Number(row.wage_hourly) : null,
-    category: row.category ?? null,
-    address_reveal_policy: row.address_reveal_policy ?? null,
+    category: row.category ?? "",
+    address_reveal_policy: row.address_reveal_policy ?? "after_apply",
     is_applied: false,
   };
 }
@@ -235,7 +235,7 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
   const offset = params.offset ?? 0;
   const status = params.status ?? "open";
 
-  const applyRange = (q: ReturnType<typeof supabase.from>) => {
+  const applyRange = (q: any) => {
     if (!limit) return q;
     return q.range(offset, offset + limit - 1);
   };
@@ -289,8 +289,8 @@ export type CreateJobInput = {
   description: string;
   wage_hourly: number;
   status: Database["public"]["Enums"]["job_status"];
-  category: Database["public"]["Enums"]["job_category"];
-  address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"];
+  category: string;
+  address_reveal_policy?: string | null;
   public_location_label?: string;
   public_lat?: number | null;
   public_lng?: number | null;

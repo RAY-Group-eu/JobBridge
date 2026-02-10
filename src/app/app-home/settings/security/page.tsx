@@ -23,7 +23,7 @@ export default function SecuritySettingsPage() {
                 .eq("user_id", user.id)
                 .order("created_at", { ascending: false })
                 .limit(5);
-            if (data) setEvents(data);
+            if (data) setEvents(data as any);
         }
         setLoading(false);
     };
@@ -69,7 +69,7 @@ export default function SecuritySettingsPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm text-slate-200 font-medium capitalize">{event.event_type.replace(/_/g, " ")}</p>
-                                            <p className="text-xs text-slate-500">{new Date(event.created_at).toLocaleString('de-DE')}</p>
+                                            <p className="text-xs text-slate-500">{new Date(String(event.created_at)).toLocaleString('de-DE')}</p>
                                         </div>
                                     </div>
                                     <span className="text-xs text-slate-500 font-mono">{event.ip_address || "IP Hidden"}</span>
