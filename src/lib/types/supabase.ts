@@ -6,35 +6,63 @@ export type Json =
     | { [key: string]: Json | undefined }
     | Json[]
 
-export interface Database {
+export type Database = {
+    graphql_public: {
+        Tables: {
+            [_ in never]: never
+        }
+        Views: {
+            [_ in never]: never
+        }
+        Functions: {
+            graphql: {
+                Args: {
+                    operationName?: string
+                    query?: string
+                    variables?: Json
+                    extensions?: Json
+                }
+                Returns: Json
+            }
+        }
+        Enums: {
+            [_ in never]: never
+        }
+        CompositeTypes: {
+            [_ in never]: never
+        }
+    }
     public: {
         Tables: {
             applications: {
                 Row: {
+                    cover_letter: string | null
                     created_at: string
                     id: string
                     job_id: string
                     message: string | null
                     rejection_reason: string | null
-                    status: Database["public"]["Enums"]["application_status"]
+                    status: string
                     user_id: string
                 }
                 Insert: {
+                    cover_letter?: string | null
                     created_at?: string
                     id?: string
                     job_id: string
                     message?: string | null
                     rejection_reason?: string | null
-                    status?: Database["public"]["Enums"]["application_status"]
+                    status?: string
                     user_id: string
                 }
                 Update: {
+                    cover_letter?: string | null
                     created_at?: string
                     id?: string
                     job_id?: string
                     message?: string | null
                     rejection_reason?: string | null
-                    status?: Database["public"]["Enums"]["application_status"]
+                    status?: string
                     user_id?: string
                 }
                 Relationships: [
@@ -45,234 +73,190 @@ export interface Database {
                         referencedRelation: "jobs"
                         referencedColumns: ["id"]
                     },
-                    {
-                        foreignKeyName: "applications_user_id_fkey"
-                        columns: ["user_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
                 ]
             }
             demo_applications: {
                 Row: {
+                    cover_letter: string | null
                     created_at: string
                     id: string
                     job_id: string
-                    message: string | null
-                    status: Database["public"]["Enums"]["application_status"]
+                    status: string
                     user_id: string
                 }
                 Insert: {
+                    cover_letter?: string | null
                     created_at?: string
                     id?: string
                     job_id: string
-                    message?: string | null
-                    status?: Database["public"]["Enums"]["application_status"]
+                    status?: string
                     user_id: string
                 }
                 Update: {
+                    cover_letter?: string | null
                     created_at?: string
                     id?: string
                     job_id?: string
-                    message?: string | null
-                    status?: Database["public"]["Enums"]["application_status"]
+                    status?: string
                     user_id?: string
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "demo_applications_job_id_fkey"
+                        columns: ["job_id"]
+                        isOneToOne: false
+                        referencedRelation: "demo_jobs"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
             demo_jobs: {
                 Row: {
+                    address_reveal_policy: Database["public"]["Enums"]["address_reveal_policy"]
+                    category: Database["public"]["Enums"]["job_category"]
                     created_at: string
                     description: string
-                    id: string
-                    market_id: string
-                    posted_by: string
-                    status: Database["public"]["Enums"]["job_status"]
-                    title: string
-                    wage_hourly: number | null
-                    public_location_label: string | null
-                    public_lat: number | null
-                    public_lng: number | null
-                    category: string | null
-                    address_reveal_policy: string | null
-                }
-                Insert: {
-                    created_at?: string
-                    description: string
-                    id?: string
-                    market_id: string
-                    posted_by: string
-                    status?: Database["public"]["Enums"]["job_status"]
-                    title: string
-                    wage_hourly?: number | null
-                }
-                Update: {
-                    created_at?: string
-                    description?: string
-                    id?: string
-                    market_id?: string
-                    posted_by?: string
-                    status?: Database["public"]["Enums"]["job_status"]
-                    title?: string
-                    wage_hourly?: number | null
-                }
-                Relationships: []
-            }
-            demo_sessions: {
-                Row: {
-                    created_at: string
-                    demo_view: string
-                    enabled: boolean
-                    updated_at: string
-                    user_id: string
-                }
-                Insert: {
-                    created_at?: string
-                    demo_view?: string
-                    enabled?: boolean
-                    updated_at?: string
-                    user_id: string
-                }
-                Update: {
-                    created_at?: string
-                    demo_view?: string
-                    enabled?: boolean
-                    updated_at?: string
-                    user_id?: string
-                }
-                Relationships: []
-            }
-            guardian_invitations: {
-                Row: {
-                    id: string
-                    child_id: string
-                    token: string
-                    status: "active" | "redeemed" | "expired" | "revoked"
                     expires_at: string
-                    redeemed_by: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    child_id: string
-                    token: string
-                    status?: "active" | "redeemed" | "expired" | "revoked"
-                    expires_at: string
-                    redeemed_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    child_id?: string
-                    token?: string
-                    status?: "active" | "redeemed" | "expired" | "revoked"
-                    expires_at?: string
-                    redeemed_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "guardian_invitations_child_id_fkey"
-                        columns: ["child_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            job_private_details: {
-                Row: {
-                    address_street: string | null
-                    contact_email: string | null
-                    contact_phone: string | null
-                    job_id: string
-                }
-                Insert: {
-                    address_street?: string | null
-                    contact_email?: string | null
-                    contact_phone?: string | null
-                    job_id: string
-                }
-                Update: {
-                    address_street?: string | null
-                    contact_email?: string | null
-                    contact_phone?: string | null
-                    job_id?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "job_private_details_job_id_fkey"
-                        columns: ["job_id"]
-                        isOneToOne: true
-                        referencedRelation: "jobs"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            jobs: {
-                Row: {
-                    address_reveal_policy: string | null
-                    category: string | null
-                    created_at: string
-                    description: string | null
-                    expires_at: string | null
                     filled_at: string | null
                     filled_by: string | null
                     hiring_mode: Database["public"]["Enums"]["hiring_mode"]
                     id: string
-                    market_id: string | null
+                    market_id: string
                     max_applicants: number | null
                     posted_by: string
-                    public_lat: number | null
-                    public_lng: number | null
-                    public_location_label: string | null
+                    public_lat: number
+                    public_lng: number
+                    public_location_label: string
                     status: Database["public"]["Enums"]["job_status"]
                     title: string
-                    wage_hourly: number | null
+                    wage_hourly: number
                 }
                 Insert: {
-                    address_reveal_policy?: string | null
-                    category?: string | null
+                    address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"]
+                    category: Database["public"]["Enums"]["job_category"]
                     created_at?: string
-                    description?: string | null
-                    expires_at?: string | null
+                    description: string
+                    expires_at?: string
                     filled_at?: string | null
                     filled_by?: string | null
                     hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
                     id?: string
-                    market_id?: string | null
+                    market_id: string
                     max_applicants?: number | null
                     posted_by: string
-                    public_lat?: number | null
-                    public_lng?: number | null
-                    public_location_label?: string | null
-                    status: Database["public"]["Enums"]["job_status"]
+                    public_lat: number
+                    public_lng: number
+                    public_location_label: string
+                    status?: Database["public"]["Enums"]["job_status"]
                     title: string
-                    wage_hourly?: number | null
+                    wage_hourly: number
                 }
                 Update: {
-                    address_reveal_policy?: string | null
-                    category?: string | null
+                    address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"]
+                    category?: Database["public"]["Enums"]["job_category"]
                     created_at?: string
-                    description?: string | null
-                    expires_at?: string | null
+                    description?: string
+                    expires_at?: string
                     filled_at?: string | null
                     filled_by?: string | null
                     hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
                     id?: string
-                    market_id?: string | null
+                    market_id?: string
                     max_applicants?: number | null
                     posted_by?: string
-                    public_lat?: number | null
-                    public_lng?: number | null
-                    public_location_label?: string | null
+                    public_lat?: number
+                    public_lng?: number
+                    public_location_label?: string
                     status?: Database["public"]["Enums"]["job_status"]
                     title?: string
-                    wage_hourly?: number | null
+                    wage_hourly?: number
+                }
+                Relationships: []
+            }
+            guardian_relationships: {
+                Row: {
+                    child_id: string
+                    created_at: string | null
+                    guardian_id: string
+                    id: string
+                    status: string
+                }
+                Insert: {
+                    child_id: string
+                    created_at?: string | null
+                    guardian_id: string
+                    id?: string
+                    status: string
+                }
+                Update: {
+                    child_id?: string
+                    created_at?: string | null
+                    guardian_id?: string
+                    id?: string
+                    status?: string
+                }
+                Relationships: []
+            }
+            jobs: {
+                Row: {
+                    address_reveal_policy: Database["public"]["Enums"]["address_reveal_policy"]
+                    category: Database["public"]["Enums"]["job_category"]
+                    created_at: string
+                    description: string
+                    expires_at: string
+                    filled_at: string | null
+                    filled_by: string | null
+                    hiring_mode: Database["public"]["Enums"]["hiring_mode"]
+                    id: string
+                    market_id: string
+                    max_applicants: number | null
+                    posted_by: string
+                    public_lat: number
+                    public_lng: number
+                    public_location_label: string
+                    status: Database["public"]["Enums"]["job_status"]
+                    title: string
+                    wage_hourly: number
+                }
+                Insert: {
+                    address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"]
+                    category: Database["public"]["Enums"]["job_category"]
+                    created_at?: string
+                    description: string
+                    expires_at?: string
+                    filled_at?: string | null
+                    filled_by?: string | null
+                    hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
+                    id?: string
+                    market_id: string
+                    max_applicants?: number | null
+                    posted_by: string
+                    public_lat: number
+                    public_lng: number
+                    public_location_label: string
+                    status?: Database["public"]["Enums"]["job_status"]
+                    title: string
+                    wage_hourly: number
+                }
+                Update: {
+                    address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"]
+                    category?: Database["public"]["Enums"]["job_category"]
+                    created_at?: string
+                    description?: string
+                    expires_at?: string
+                    filled_at?: string | null
+                    filled_by?: string | null
+                    hiring_mode?: Database["public"]["Enums"]["hiring_mode"]
+                    id?: string
+                    market_id?: string
+                    max_applicants?: number | null
+                    posted_by?: string
+                    public_lat?: number
+                    public_lng?: number
+                    public_location_label?: string
+                    status?: Database["public"]["Enums"]["job_status"]
+                    title?: string
+                    wage_hourly?: number
                 }
                 Relationships: [
                     {
@@ -291,105 +275,42 @@ export interface Database {
                     },
                 ]
             }
-            moderation_actions: {
+            messages: {
                 Row: {
-                    action: string
-                    created_at: string
+                    application_id: string
+                    content: string
+                    created_at: string | null
                     id: string
-                    moderator_id: string
-                    reason: string | null
-                    target_id: string
-                    target_type: string
-                }
-                Insert: {
-                    action: string
-                    created_at?: string
-                    id?: string
-                    moderator_id: string
-                    reason?: string | null
-                    target_id: string
-                    target_type: string
-                }
-                Update: {
-                    action?: string
-                    created_at?: string
-                    id?: string
-                    moderator_id?: string
-                    reason?: string | null
-                    target_id?: string
-                    target_type?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "moderation_actions_moderator_id_fkey"
-                        columns: ["moderator_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            notification_preferences: {
-                Row: {
-                    email_enabled: boolean
-                    push_enabled: boolean
-                    updated_at: string
-                    user_id: string
-                    email_application_updates?: boolean
-                    email_messages?: boolean
-                    digest_frequency?: string
-                }
-                Insert: {
-                    email_enabled?: boolean
-                    push_enabled?: boolean
-                    updated_at?: string
-                    user_id: string
-                }
-                Update: {
-                    email_enabled?: boolean
-                    push_enabled?: boolean
-                    updated_at?: string
-                    user_id?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "notification_preferences_user_id_fkey"
-                        columns: ["user_id"]
-                        isOneToOne: true
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            notifications: {
-                Row: {
-                    created_at: string
-                    id: string
-                    payload: Json | null
                     read_at: string | null
-                    type: string
-                    user_id: string
+                    sender_id: string
                 }
                 Insert: {
-                    created_at?: string
+                    application_id: string
+                    content: string
+                    created_at?: string | null
                     id?: string
-                    payload?: Json | null
                     read_at?: string | null
-                    type: string
-                    user_id: string
+                    sender_id: string
                 }
                 Update: {
-                    created_at?: string
+                    application_id?: string
+                    content?: string
+                    created_at?: string | null
                     id?: string
-                    payload?: Json | null
                     read_at?: string | null
-                    type?: string
-                    user_id?: string
+                    sender_id?: string
                 }
                 Relationships: [
                     {
-                        foreignKeyName: "notifications_user_id_fkey"
-                        columns: ["user_id"]
+                        foreignKeyName: "messages_application_id_fkey"
+                        columns: ["application_id"]
+                        isOneToOne: false
+                        referencedRelation: "applications"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "messages_sender_id_fkey"
+                        columns: ["sender_id"]
                         isOneToOne: false
                         referencedRelation: "profiles"
                         referencedColumns: ["id"]
@@ -398,97 +319,75 @@ export interface Database {
             }
             profiles: {
                 Row: {
+                    account_type: Database["public"]["Enums"]["account_type"]
+                    address_city: string | null
+                    address_street: string | null
+                    address_zip: string | null
+                    avatar_url: string | null
                     bio: string | null
-                    city: string | null
-                    company_contact_email: string | null
-                    company_message: string | null
-                    company_name: string | null
-                    country: string | null
-                    created_at: string
-                    email: string | null
-                    email_verified_at: string | null
-                    full_name: string | null
-                    id: string
-                    interests: string | null
-                    skills: string | null
-                    availability_note: string | null
-                    guardian_id: string | null
-                    guardian_status: Database["public"]["Enums"]["guardian_status"]
-                    guardian_verified_at: string | null
-                    account_type: Database["public"]["Enums"]["account_type"] | null
-                    market_id: string | null
-                    phone_verified_at: string | null
-                    provider_kind: Database["public"]["Enums"]["provider_kind"] | null
-                    provider_verification_status: Database["public"]["Enums"]["provider_verification_status"]
-                    provider_verified_at: string | null
                     birthdate: string | null
-                    updated_at: string | null
-                    theme_preference?: "light" | "dark" | "system"
+                    company_name: string | null
+                    created_at: string
+                    email: string
+                    full_name: string | null
+                    guardian_status: string | null
+                    id: string
+                    market_id: string | null
+                    phone: string | null
+                    provider_verification_evidence: string | null
+                    provider_verification_notes: string | null
+                    provider_verification_status: string | null
+                    provider_verified_at: string | null
+                    updated_at: string
+                    verification_status: Database["public"]["Enums"]["verification_status"]
                 }
                 Insert: {
+                    account_type?: Database["public"]["Enums"]["account_type"]
+                    address_city?: string | null
+                    address_street?: string | null
+                    address_zip?: string | null
+                    avatar_url?: string | null
                     bio?: string | null
-                    city?: string | null
-                    company_contact_email?: string | null
-                    company_message?: string | null
-                    company_name?: string | null
-                    country?: string | null
-                    created_at?: string
-                    email?: string | null
-                    email_verified_at?: string | null
-                    full_name?: string | null
-                    id: string
-                    interests?: string | null
-                    skills?: string | null
-                    availability_note?: string | null
-                    guardian_id?: string | null
-                    guardian_status?: Database["public"]["Enums"]["guardian_status"]
-                    guardian_verified_at?: string | null
-                    account_type?: Database["public"]["Enums"]["account_type"] | null
-                    market_id?: string | null
-                    phone_verified_at?: string | null
-                    provider_kind?: Database["public"]["Enums"]["provider_kind"] | null
-                    provider_verification_status?: Database["public"]["Enums"]["provider_verification_status"]
-                    provider_verified_at?: string | null
                     birthdate?: string | null
-                    updated_at?: string | null
-                    theme_preference?: "light" | "dark" | "system"
+                    company_name?: string | null
+                    created_at?: string
+                    email: string
+                    full_name?: string | null
+                    guardian_status?: string | null
+                    id: string
+                    market_id?: string | null
+                    phone?: string | null
+                    provider_verification_evidence?: string | null
+                    provider_verification_notes?: string | null
+                    provider_verification_status?: string | null
+                    provider_verified_at?: string | null
+                    updated_at?: string
+                    verification_status?: Database["public"]["Enums"]["verification_status"]
                 }
                 Update: {
+                    account_type?: Database["public"]["Enums"]["account_type"]
+                    address_city?: string | null
+                    address_street?: string | null
+                    address_zip?: string | null
+                    avatar_url?: string | null
                     bio?: string | null
-                    city?: string | null
-                    company_contact_email?: string | null
-                    company_message?: string | null
-                    company_name?: string | null
-                    country?: string | null
-                    created_at?: string
-                    email?: string | null
-                    email_verified_at?: string | null
-                    full_name?: string | null
-                    id?: string
-                    interests?: string | null
-                    skills?: string | null
-                    availability_note?: string | null
-                    guardian_id?: string | null
-                    guardian_status?: Database["public"]["Enums"]["guardian_status"]
-                    guardian_verified_at?: string | null
-                    account_type?: Database["public"]["Enums"]["account_type"] | null
-                    market_id?: string | null
-                    phone_verified_at?: string | null
-                    provider_kind?: Database["public"]["Enums"]["provider_kind"] | null
-                    provider_verification_status?: Database["public"]["Enums"]["provider_verification_status"]
-                    provider_verified_at?: string | null
                     birthdate?: string | null
-                    updated_at?: string | null
-                    theme_preference?: "light" | "dark" | "system"
+                    company_name?: string | null
+                    created_at?: string
+                    email?: string
+                    full_name?: string | null
+                    guardian_status?: string | null
+                    id?: string
+                    market_id?: string | null
+                    phone?: string | null
+                    provider_verification_evidence?: string | null
+                    provider_verification_notes?: string | null
+                    provider_verification_status?: string | null
+                    provider_verified_at?: string | null
+                    updated_at?: string
+                    verification_status?: Database["public"]["Enums"]["verification_status"]
                 }
                 Relationships: [
-                    {
-                        foreignKeyName: "profiles_guardian_id_fkey"
-                        columns: ["guardian_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
                     {
                         foreignKeyName: "profiles_market_id_fkey"
                         columns: ["market_id"]
@@ -500,234 +399,46 @@ export interface Database {
             }
             regions_live: {
                 Row: {
-                    cnt_jobs: number | null
-                    cnt_seekers: number | null
-                    created_at: string
-                    display_name: string
-                    id: string
-                    lat: number
-                    lng: number
-                    radius_km: number | null
-                    slug: string | null
                     brand_prefix: string | null
-                    city: string
                     centroid_lat: number | null
                     centroid_lng: number | null
+                    city: string
+                    created_at: string
+                    display_name: string | null
+                    id: string
                     is_live: boolean
+                    radius_km: number
+                    rank: number
+                    slug: string | null
+                    state: string
                 }
                 Insert: {
-                    cnt_jobs?: number | null
-                    cnt_seekers?: number | null
-                    created_at?: string
-                    display_name: string
-                    id: string
-                    lat: number
-                    lng: number
-                    radius_km?: number | null
-                    slug?: string | null
                     brand_prefix?: string | null
-                    city: string
                     centroid_lat?: number | null
                     centroid_lng?: number | null
+                    city: string
+                    created_at?: string
+                    display_name?: string | null
+                    id?: string
                     is_live?: boolean
+                    radius_km?: number
+                    rank?: number
+                    slug?: string | null
+                    state: string
                 }
                 Update: {
-                    cnt_jobs?: number | null
-                    cnt_seekers?: number | null
-                    created_at?: string
-                    display_name?: string
-                    id?: string
-                    lat?: number
-                    lng?: number
-                    radius_km?: number | null
-                    slug?: string | null
                     brand_prefix?: string | null
-                    city?: string
                     centroid_lat?: number | null
                     centroid_lng?: number | null
-                    is_live?: boolean
-                }
-                Relationships: []
-            }
-            reports: {
-                Row: {
-                    created_at: string
-                    details: string | null
-                    id: string
-                    reason_code: string
-                    reporter_user_id: string
-                    status: string
-                    target_id: string
-                    target_type: string
-                }
-                Insert: {
-                    created_at?: string
-                    details?: string | null
-                    id?: string
-                    reason_code: string
-                    reporter_user_id: string
-                    status?: string
-                    target_id: string
-                    target_type: string
-                }
-                Update: {
-                    created_at?: string
-                    details?: string | null
-                    id?: string
-                    reason_code?: string
-                    reporter_user_id?: string
-                    status?: string
-                    target_id?: string
-                    target_type?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "reports_reporter_user_id_fkey"
-                        columns: ["reporter_user_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            security_events: {
-                Row: {
-                    created_at: string
-                    event_type: string
-                    id: string
-                    ip_address: string | null
-                    metadata: Json | null
-                    user_agent: string | null
-                    user_id: string | null
-                }
-                Insert: {
-                    created_at?: string
-                    event_type: string
-                    id?: string
-                    ip_address?: string | null
-                    metadata?: Json | null
-                    user_agent?: string | null
-                    user_id?: string | null
-                }
-                Update: {
-                    created_at?: string
-                    event_type?: string
-                    id?: string
-                    ip_address?: string | null
-                    metadata?: Json | null
-                    user_agent?: string | null
-                    user_id?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "security_events_user_id_fkey"
-                        columns: ["user_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            system_roles: {
-                Row: {
-                    created_at: string
-                    description: string | null
-                    id: string
-                    name: string
-                }
-                Insert: {
-                    created_at?: string
-                    description?: string | null
-                    id?: string
-                    name: string
-                }
-                Update: {
-                    created_at?: string
-                    description?: string | null
-                    id?: string
-                    name?: string
-                }
-                Relationships: []
-            }
-            user_system_roles: {
-                Row: {
-                    created_at: string
-                    role_id: string
-                    user_id: string
-                }
-                Insert: {
-                    created_at?: string
-                    role_id: string
-                    user_id: string
-                }
-                Update: {
-                    created_at?: string
-                    role_id?: string
-                    user_id?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "user_system_roles_role_id_fkey"
-                        columns: ["role_id"]
-                        isOneToOne: false
-                        referencedRelation: "system_roles"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "user_system_roles_user_id_fkey"
-                        columns: ["user_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            waitlist: {
-                Row: {
-                    city: string
-                    country: string | null
-                    created_at: string
-                    email: string
-                    federal_state: string | null
-                    id: string
-                    role: string | null
-                }
-                Insert: {
-                    city: string
-                    country?: string | null
-                    created_at?: string
-                    email: string
-                    federal_state?: string | null
-                    id?: string
-                    role?: string | null
-                }
-                Update: {
                     city?: string
-                    country?: string | null
                     created_at?: string
-                    email?: string
-                    federal_state?: string | null
+                    display_name?: string | null
                     id?: string
-                    role?: string | null
-                }
-                Relationships: []
-            }
-
-            verification_attempts: {
-                Row: {
-                    id: string
-                    attempts: number
-                    last_attempt: string | null
-                }
-                Insert: {
-                    id: string
-                    attempts?: number
-                    last_attempt?: string | null
-                }
-                Update: {
-                    id?: string
-                    attempts?: number
-                    last_attempt?: string | null
+                    is_live?: boolean
+                    radius_km?: number
+                    rank?: number
+                    slug?: string | null
+                    state?: string
                 }
                 Relationships: []
             }
@@ -736,69 +447,129 @@ export interface Database {
             [_ in never]: never
         }
         Functions: {
-            get_jobs_feed: {
-                Args: {
-                    p_market_id: string
-                    p_user_lat?: number | null
-                    p_user_lng?: number | null
-                }
-                Returns: Database["public"]["Tables"]["jobs"]["Row"][]
-            }
-            create_job_atomic: {
-                Args: {
-                    p_market_id: string
-                    p_title: string
-                    p_description: string
-                    p_wage_hourly?: number | null
-                    p_category?: string | null
-                    p_address_reveal_policy?: string | null
-                    p_public_location_label?: string | null
-                    p_public_lat?: number | null
-                    p_public_lng?: number | null
-                    p_address_full?: string | null
-                    p_private_lat?: number | null
-                    p_private_lng?: number | null
-                    p_notes?: string | null
-                    p_location_id?: string | null
-                }
-                Returns: unknown
-            }
-            create_guardian_invitation: {
-                Args: {
-                    p_invited_email?: string | null
-                }
+            get_my_claims: {
+                Args: Record<PropertyKey, never>
                 Returns: Json
             }
-            redeem_guardian_invitation: {
+            get_nearby_offers: {
                 Args: {
-                    token_input: string
+                    arg_lat: number
+                    arg_lng: number
+                    arg_radius_km: number
                 }
-                Returns: Json
+                Returns: {
+                    id: string
+                    title: string
+                    description: string
+                    wage_hourly: number
+                    public_location_label: string
+                    created_at: string
+                    status: Database["public"]["Enums"]["job_status"]
+                    distance_meters: number
+                }[]
             }
-            get_guardian_invitation_info: {
-                Args: {
-                    token_input: string
-                }
-                Returns: Json
-            }
-            accept_applicant: {
-                Args: {
-                    p_application_id: string
-                }
-                Returns: Json
+            is_claims_admin: {
+                Args: Record<PropertyKey, never>
+                Returns: boolean
             }
         }
         Enums: {
-            account_type: "job_seeker" | "job_provider"
-            guardian_status: "none" | "pending" | "linked"
-            provider_kind: "private" | "company"
-            provider_verification_status: "none" | "pending" | "verified" | "rejected"
-            application_status: "submitted" | "withdrawn" | "accepted" | "rejected" | "auto_rejected" | "completed" | "cancelled"
-            hiring_mode: "open_pool" | "first_come" | "direct_hire"
-            job_status: "draft" | "open" | "closed" | "reviewing" | "reserved" | "filled"
+            account_type: "job_seeker" | "job_provider" | "guardian"
+            address_reveal_policy: "always" | "on_accept"
+            hiring_mode: "first_come" | "select"
+            job_category:
+            | "gardening"
+            | "household"
+            | "shopping"
+            | "pets"
+            | "tech_help"
+            | "other"
+            job_status: "open" | "in_progress" | "closed"
+            application_status: "submitted" | "pending" | "negotiating" | "waitlisted" | "rejected" | "accepted" | "cancelled"
+            verification_status: "unverified" | "pending" | "verified"
         }
         CompositeTypes: {
             [_ in never]: never
         }
     }
 }
+
+export type Tables<
+    PublicTableNameOrOptions extends
+    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    | { schema: keyof Database },
+    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+    ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+            Row: infer R
+        }
+    ? R
+    : never
+    : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] &
+        Database["public"]["Views"])
+    ? (Database["public"]["Tables"] &
+        Database["public"]["Views"])[PublicTableNameOrOptions] extends {
+            Row: infer R
+        }
+    ? R
+    : never
+    : never
+
+export type TablesInsert<
+    PublicTableNameOrOptions extends
+    | keyof Database["public"]["Tables"]
+    | { schema: keyof Database },
+    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+        Insert: infer I
+    }
+    ? I
+    : never
+    : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+    }
+    ? I
+    : never
+    : never
+
+export type TablesUpdate<
+    PublicTableNameOrOptions extends
+    | keyof Database["public"]["Tables"]
+    | { schema: keyof Database },
+    TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+    ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+        Update: infer U
+    }
+    ? U
+    : never
+    : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+    }
+    ? U
+    : never
+    : never
+
+export type Enums<
+    PublicEnumNameOrOptions extends
+    | keyof Database["public"]["Enums"]
+    | { schema: keyof Database },
+    EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+    : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
+    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
+    : never

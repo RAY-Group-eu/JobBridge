@@ -49,3 +49,28 @@ export async function updateApplicationStatus(applicationId: string, newStatus: 
     revalidatePath("/app-home/applications");
     return { success: true };
 }
+
+export async function withdrawApplication(applicationId: string) {
+    const supabase = await supabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nicht authentifiziert" };
+
+    const { error } = await supabase
+        .from("applications")
+        .update({ status: "withdrawn" })
+        .eq("id", applicationId)
+        .eq("user_id", user.id); // Secure: ensure user is applicant
+
+    if (error) {
+        console.error("Withdraw Error", error);
+        return { error: "Fehler beim Zurückziehen." };
+    }
+
+    // TODO: Notify provider?
+    // TODO: Waitlist promotion logic here? (Or separate trigger)
+
+    revalidatePath("/app-home/applications");
+    revalidatePath("/app-home/jobs");
+    return { success: true };
+}

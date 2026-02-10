@@ -1,7 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { AccountType } from "@/lib/types";
 import type { Database } from "@/lib/types/supabase";
-import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem, ApplicationRow } from "@/lib/types/jobbridge";
+import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem, ApplicationRow, ApplicationStatus } from "@/lib/types/jobbridge";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -63,15 +63,15 @@ export async function getEffectiveView(opts?: {
 
   // 1) Demo session — the only switch for demo_* tables
   const demoRes = await supabase
-    .from("demo_sessions")
+    .from("demo_sessions" as any)
     .select("enabled, demo_view")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (demoRes.error) return { ok: false, error: toErrorInfo(demoRes.error) };
 
-  if (demoRes.data?.enabled === true) {
-    const demoView = (demoRes.data.demo_view as AccountType | null) ?? null;
+  if ((demoRes.data as any)?.enabled === true) {
+    const demoView = ((demoRes.data as any).demo_view as AccountType | null) ?? null;
     return {
       ok: true,
       data: {
@@ -289,8 +289,8 @@ export type CreateJobInput = {
   description: string;
   wage_hourly: number;
   status: Database["public"]["Enums"]["job_status"];
-  category: string;
-  address_reveal_policy?: "after_apply" | "after_accept";
+  category: Database["public"]["Enums"]["job_category"];
+  address_reveal_policy?: Database["public"]["Enums"]["address_reveal_policy"];
   public_location_label?: string;
   public_lat?: number | null;
   public_lng?: number | null;
@@ -334,9 +334,9 @@ async function upsertJobPrivateDetails(
     private_lat: params.private_lat ?? null,
     private_lng: params.private_lng ?? null,
     notes: params.notes ?? null,
-  } as unknown as Database["public"]["Tables"]["job_private_details"]["Insert"];
+  };
 
-  const res = await supabase.from("job_private_details").upsert(payload, { onConflict: "job_id" });
+  const res = await supabase.from("job_private_details" as any).upsert(payload, { onConflict: "job_id" });
   if (res.error) return { ok: false, error: toErrorInfo(res.error) };
   return { ok: true };
 }
@@ -352,7 +352,7 @@ export async function createJob(params: {
   // ── DEMO ──────────────────────────────────────────────────────────
   if (params.view.source === "demo") {
     const res = await supabase
-      .from("demo_jobs")
+      .from("demo_jobs" as any)
       .insert({
         posted_by: params.userId,
         market_id: params.job.market_id,
@@ -361,7 +361,7 @@ export async function createJob(params: {
         wage_hourly: params.job.wage_hourly ?? null,
         status: params.job.status,
         category: params.job.category,
-        address_reveal_policy: params.job.address_reveal_policy ?? "after_apply",
+        address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
         public_location_label: params.job.public_location_label ?? null,
         public_lat: params.job.public_lat ?? null,
         public_lng: params.job.public_lng ?? null,
@@ -369,20 +369,20 @@ export async function createJob(params: {
       .select("id")
       .single();
 
-    if (res.error || !res.data?.id) {
+    if (res.error || !(res.data as any)?.id) {
       return { ok: false, error: toErrorInfo(res.error ?? { message: "Demo job insert returned no row" }) };
     }
-    return { ok: true, data: { outcome: "success", jobId: res.data.id, privateDetails: "skipped", createdVia: "demo" } };
+    return { ok: true, data: { outcome: "success", jobId: (res.data as any).id, privateDetails: "skipped", createdVia: "demo" } };
   }
 
   // ── LIVE: Try atomic RPC first ────────────────────────────────────
-  const rpcRes = await supabase.rpc("create_job_atomic", {
+  const rpcRes = await (supabase.rpc as any)("create_job_atomic", {
     p_market_id: params.job.market_id,
     p_title: params.job.title,
     p_description: params.job.description,
     p_wage_hourly: params.job.wage_hourly,
     p_category: params.job.category,
-    p_address_reveal_policy: params.job.address_reveal_policy ?? "after_apply",
+    p_address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
     p_public_location_label: params.job.public_location_label ?? "",
     p_public_lat: params.job.public_lat ?? null,
     p_public_lng: params.job.public_lng ?? null,
@@ -414,11 +414,11 @@ export async function createJob(params: {
       wage_hourly: params.job.wage_hourly,
       status: params.job.status,
       category: params.job.category,
-      address_reveal_policy: params.job.address_reveal_policy ?? "after_apply",
+      address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
       public_location_label: params.job.public_location_label ?? "",
       public_lat: params.job.public_lat ?? null,
       public_lng: params.job.public_lng ?? null,
-    })
+    } as any)
     .select("id")
     .single();
 
@@ -486,4 +486,40 @@ export async function fetchJobApplications(jobId: string, _userId: string): Prom
   }
 
   return { ok: true, data: items };
+}
+
+export async function fetchCandidateApplications(userId: string): Promise<Result<{ job: JobsListItem; status: Database["public"]["Enums"]["application_status"] }[]>> {
+  const supabase = await supabaseServer();
+
+  const { data, error } = await supabase
+    .from("applications")
+    .select("status, job:jobs(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) return { ok: false, error: toErrorInfo(error) };
+
+  // Map to JobsListItem
+  let items = (data ?? []).map((row: any) => ({
+    job: {
+      ...toJobsListItem(row.job),
+      is_applied: true,
+      application_status: row.status
+    } as JobsListItem,
+    status: row.status as any // force cast
+  }));
+
+  // Enrich with market/creator (optimization: we could batch this, but for now reuse existing)
+  // We need to extract the jobs list to enrich
+  let jobsList = items.map(i => i.job);
+  jobsList = await enrichWithMarketNames(supabase, jobsList) as JobsListItem[];
+  jobsList = await enrichWithCreators(supabase, jobsList) as JobsListItem[];
+
+  // Re-attach enriched jobs
+  const enrichedItems = items.map((item, index) => ({
+    ...item,
+    job: jobsList[index]
+  }));
+
+  return { ok: true, data: enrichedItems };
 }

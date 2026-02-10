@@ -160,7 +160,7 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
             public_location_label: publicLabel,
             public_lat: 50.63,
             public_lng: 6.95,
-            address_reveal_policy: "after_apply"
+            address_reveal_policy: "on_accept"
         },
         privateDetails,
     });
@@ -241,6 +241,64 @@ export async function acceptApplicant(
 }
 
 /**
+ * Start negotiation (Respond to application).
+ * Transitions status to 'negotiating' and creates initial message from provider.
+ */
+export async function respondToApplication(
+    applicationId: string,
+    message: string
+): Promise<Result<{ message_id: string }>> {
+    const supabase = await supabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { ok: false, error: { message: "Nicht authentifiziert" } };
+
+    // Get application and verify job ownership
+    const { data: app } = await supabase
+        .from("applications")
+        .select("job_id, user_id, status, job:jobs(posted_by, title)")
+        .eq("id", applicationId)
+        .single<any>();
+
+    if (!app || app.job.posted_by !== user.id) {
+        return { ok: false, error: { message: "Nicht berechtigt." } };
+    }
+
+    // Update status to 'negotiating' if it was 'submitted' (or 'pending')
+    if (app.status === 'submitted' || app.status === 'pending') {
+        const { error: updateError } = await supabase
+            .from("applications")
+            .update({ status: 'negotiating' })
+            .eq("id", applicationId);
+
+        if (updateError) return { ok: false, error: toErrorInfo(updateError) };
+    }
+
+    // Create Message
+    const { data: msg, error: msgError } = await (supabase.from("messages") as any).insert({
+        application_id: applicationId,
+        sender_id: user.id,
+        content: message
+    }).select().single();
+
+    if (msgError) return { ok: false, error: toErrorInfo(msgError) };
+
+    // Notify Applicant
+    await (supabase as any).from("notifications").insert({
+        user_id: app.user_id,
+        type: "application_update",
+        title: "Neue Nachricht zum Job",
+        body: `Der Anbieter von '${app.job.title}' hat dir geantwortet.`,
+        data: { route: "/app-home/activities" }
+    });
+
+    revalidatePath("/app-home/offers");
+    revalidatePath("/app-home/applications");
+
+    return { ok: true, data: { message_id: msg.id } };
+}
+
+/**
  * Reject an applicant with a reason. Sends notification to the applicant.
  */
 export async function rejectApplicant(
@@ -280,7 +338,7 @@ export async function rejectApplicant(
     if (error) return { ok: false, error: toErrorInfo(error) };
 
     // Send notification
-    await (supabase.from("notifications") as any).insert({
+    await (supabase as any).from("notifications").insert({
         user_id: app.user_id,
         type: "application_status",
         title: "Bewerbung abgelehnt",
@@ -289,6 +347,43 @@ export async function rejectApplicant(
             : `Deine Bewerbung für "${app.job.title}" wurde leider abgelehnt.`,
         data: { route: "/app-home/activities" },
     });
+
+    // AUTO-PROMOTION from Waitlist
+    const { data: waitlisted } = await supabase
+        .from("applications")
+        .select("id, user_id")
+        .eq("job_id", app.job.id)
+        .eq("status", "waitlisted")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (waitlisted) {
+        // Promote
+        await supabase
+            .from("applications")
+            .update({ status: "submitted" })
+            .eq("id", waitlisted.id);
+
+        // Notify Provider
+        await (supabase as any).from("notifications").insert({
+            user_id: user.id, // Provider
+            type: "application_new",
+            title: "Nachrücker aus Warteliste",
+            body: `Ein Bewerber ist von der Warteliste nachgerückt.`,
+            data: { route: "/app-home/applications" }
+        });
+        // Notify Candidate
+        await (supabase as any).from("notifications").insert({
+            user_id: waitlisted.user_id,
+            type: "application_update",
+            title: "Gute Neuigkeiten!",
+            body: `Ein Platz wurde frei! Deine Bewerbung wurde aktiviert.`,
+            data: { route: "/app-home/activities" }
+        });
+    }
+
+
 
     revalidatePath("/app-home/offers");
     revalidatePath("/app-home/applications");

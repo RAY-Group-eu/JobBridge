@@ -5,6 +5,8 @@ import { Dialog, Transition } from "@headlessui/react";
 import { X, MapPin, Euro, Calendar, ShieldCheck, Clock, Building2, Briefcase, ArrowRight, CheckCircle2 } from "lucide-react";
 import type { Database } from "@/lib/types/supabase";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
+import { VerificationRequiredModal } from "@/components/auth/VerificationRequiredModal";
+import { Lock } from "lucide-react";
 import { JobApplicationModal } from "@/components/jobs/JobApplicationModal";
 import dynamic from "next/dynamic";
 import { JobsListItem } from "@/lib/types/jobbridge";
@@ -29,6 +31,7 @@ interface JobDetailModalProps {
 
 export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus, context = 'feed' }: JobDetailModalProps) {
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+    const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
     if (!job) return null;
 
@@ -239,14 +242,25 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus,
                                                 </div>
                                             )
                                         ) : (
-                                            <ButtonPrimary
-                                                onClick={() => setIsApplicationModalOpen(true)}
-                                                className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all"
-                                            >
-                                                <span className="flex items-center gap-3 font-bold">
-                                                    Jetzt bewerben <ArrowRight size={20} />
-                                                </span>
-                                            </ButtonPrimary>
+                                            !canApply ? (
+                                                <ButtonPrimary
+                                                    onClick={() => setIsVerificationModalOpen(true)}
+                                                    className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-slate-900/20 hover:shadow-slate-800/30 hover:scale-[1.02] transition-all bg-slate-800 hover:bg-slate-700 text-slate-200 border-white/10"
+                                                >
+                                                    <span className="flex items-center gap-3 font-bold">
+                                                        <Lock size={20} /> Freischalten
+                                                    </span>
+                                                </ButtonPrimary>
+                                            ) : (
+                                                <ButtonPrimary
+                                                    onClick={() => setIsApplicationModalOpen(true)}
+                                                    className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all"
+                                                >
+                                                    <span className="flex items-center gap-3 font-bold">
+                                                        Jetzt bewerben <ArrowRight size={20} />
+                                                    </span>
+                                                </ButtonPrimary>
+                                            )
                                         )}
                                     </div>
                                 </Dialog.Panel>
@@ -263,6 +277,11 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus,
                 jobId={job.id}
                 canApply={canApply}
                 guardianStatus={guardianStatus}
+            />
+
+            <VerificationRequiredModal
+                isOpen={isVerificationModalOpen}
+                onClose={() => setIsVerificationModalOpen(false)}
             />
         </>
     );

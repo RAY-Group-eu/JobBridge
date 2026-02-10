@@ -95,7 +95,10 @@ export function NotificationsPopover() {
             {open && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-1rem))] rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+                    <div className={cn(
+                        "z-50 rounded-2xl border border-white/10 bg-slate-950/90 p-4 shadow-2xl shadow-black/50 backdrop-blur-2xl",
+                        "fixed left-4 right-4 top-[72px] md:absolute md:left-auto md:right-0 md:top-[calc(100%+0.5rem)] md:w-[22rem]"
+                    )}>
                         <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-2">
                             <h4 className="font-semibold text-white">Benachrichtigungen</h4>
                             <span className="text-xs text-slate-400">{unreadCount} neu</span>

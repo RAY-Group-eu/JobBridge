@@ -1,6 +1,6 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { fetchJobs, getEffectiveView } from "@/lib/dal/jobbridge";
+import { fetchJobs, fetchCandidateApplications, getEffectiveView } from "@/lib/dal/jobbridge";
 import { QueryDebugPanel } from "@/components/debug/QueryDebugPanel";
 import { JobsList } from "@/components/jobs/JobsList";
 import type { JobsListItem } from "@/lib/types/jobbridge";
@@ -41,36 +41,36 @@ export default async function JobsPage() {
         redirect("/app-home/offers");
     }
 
-    // Direct relationship check for self-healing status
-    // (We mimic the logic in actions.ts/ProfilePage to be consistent)
-    // Ideally this logic should be centralized but for now we follow the established pattern
     const guardianStatus = profile.guardian_status ?? "none";
-
-    // We can assume if they are here, standard middleware checks passed, 
-    // but for UI purposes we want to know if they are "effectively" linked.
-    // Since we don't have the relationship count here easily without another query, 
-    // we rely on profile.guardian_status. 
-    // NOTE: The user should have run the SQL patch by now, or the ProfilePage self-healing fixed it visually there.
-    // To be perfectly safe visually here, we could run the query, but let's trust the "guardianStatus" prop 
-    // is indicative enough or that they visited the profile page.
-
     const canApply = !isMinor(profile.birthdate ?? null) || guardianStatus === "linked";
 
-    const jobsRes = await fetchJobs({
-        mode: "feed",
-        view,
-        userId: profile.id,
-        marketId: profile.market_id,
-        status: "open",
-        limit: 50,
-        offset: 0,
-    });
+    const [jobsRes, appsRes] = await Promise.all([
+        fetchJobs({
+            mode: "feed",
+            view,
+            userId: profile.id,
+            marketId: profile.market_id,
+            status: "open",
+            limit: 50,
+            offset: 0,
+        }),
+        fetchCandidateApplications(profile.id)
+    ]);
 
-    const jobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
+    const activeJobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
+    const allApps = appsRes.ok ? appsRes.data : [];
+
+    const waitlistedJobs = allApps
+        .filter(a => a.status === 'waitlisted')
+        .map(a => a.job);
+
+    const appliedJobs = allApps
+        .filter(a => ['submitted', 'pending', 'negotiating', 'accepted', 'rejected'].includes(a.status))
+        .map(a => a.job);
 
     return (
-        <div className="container mx-auto py-12 px-4 md:px-6">
-            <div className="mx-auto max-w-6xl space-y-8">
+        <div className="container mx-auto py-2 px-4 md:px-6">
+            <div className="mx-auto max-w-6xl space-y-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
                         Finde deinen Job
@@ -85,7 +85,7 @@ export default async function JobsPage() {
                             {jobsRes.error.code ? `${jobsRes.error.code}: ` : ""}{jobsRes.error.message}
                         </p>
                     </div>
-                ) : (!jobs || jobs.length === 0) ? (
+                ) : (activeJobs.length === 0 && waitlistedJobs.length === 0 && appliedJobs.length === 0) ? (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-sm">
                         <p className="text-slate-300">Aktuell sind keine neuen Jobs verfügbar.</p>
                         <div className="mt-4 text-[10px] text-slate-600 font-mono">
@@ -94,7 +94,9 @@ export default async function JobsPage() {
                     </div>
                 ) : (
                     <JobsList
-                        jobs={jobs}
+                        activeJobs={activeJobs}
+                        waitlistedJobs={waitlistedJobs}
+                        appliedJobs={appliedJobs}
                         isDemo={view.source === "demo"}
                         canApply={canApply}
                         guardianStatus={guardianStatus}
@@ -104,4 +106,3 @@ export default async function JobsPage() {
         </div>
     );
 }
-

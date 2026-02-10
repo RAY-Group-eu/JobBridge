@@ -23,6 +23,7 @@ export type EffectiveViewSnapshot = {
 };
 
 export type JobStatus = Database["public"]["Enums"]["job_status"];
+export type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 // Normalized shape for list rendering across live + demo sources and RPC/table strategies.
 export type JobsListItem = {
@@ -47,6 +48,7 @@ export type JobsListItem = {
   } | null;
   category?: string | null;
   address_reveal_policy?: string | null;
+  application_status?: ApplicationStatus | null;
 };
 
 export type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"] & {

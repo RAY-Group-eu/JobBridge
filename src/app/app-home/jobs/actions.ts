@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { Profile } from "@/lib/types";
 import { getEffectiveView } from "@/lib/dal/jobbridge";
+import { Database } from "@/lib/types/supabase";
 
 function isMinor(birthdate: string | null): boolean {
     if (!birthdate) return true;
@@ -76,10 +77,21 @@ export async function applyToJob(formData: FormData | string) {
         return { error: "Job konnte nicht geladen werden." };
     }
 
+    // Check for active negotiations or accepted applications to determine Waitlist status
+    const { count: activeAppsCount } = await supabase
+        .from(appsTable)
+        .select("*", { count: 'exact', head: true })
+        .eq("job_id", jobId)
+        .in("status", ["negotiating", "accepted"]);
+
+    const initialStatus: Database["public"]["Enums"]["application_status"] = (activeAppsCount && activeAppsCount > 0)
+        ? "waitlisted"
+        : "submitted";
+
     const { error } = await supabase.from(appsTable).insert({
         job_id: jobId,
         user_id: user.id,
-        status: "submitted",
+        status: initialStatus,
         message: message
     });
 
@@ -90,12 +102,16 @@ export async function applyToJob(formData: FormData | string) {
     }
 
     // Create Notification for Provider
+    // Create Notification for Provider
     if (job && job.posted_by) {
+        const isWaitlist = initialStatus === "waitlisted";
         await supabase.from("notifications").insert({
             user_id: job.posted_by,
             type: "application_new",
-            title: "Neue Bewerbung",
-            body: `Jemand hat sich auf '${job.title}' beworben.`,
+            title: isWaitlist ? "Neuer Wartelisten-Eintrag" : "Neue Bewerbung",
+            body: isWaitlist
+                ? `Jemand hat sich auf die Warteliste für '${job.title}' gesetzt.`
+                : `Jemand hat sich auf '${job.title}' beworben.`,
             data: { route: "/app-home/applications" }
         });
     }
