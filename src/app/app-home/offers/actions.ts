@@ -36,10 +36,23 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
 
     const intent = (formData.get("intent") as string | null) ?? "create";
     const existingJobId = (formData.get("job_id") as string | null) ?? null;
+    const useDefault = formData.get("use_default_location") === "true";
 
-    // Get User Profile for Market ID
-    const { data: profile } = await supabase.from("profiles").select("market_id, account_type").eq("id", user.id).single();
+    // Parallelize initial data fetching to reduce latency
+    const [profileResult, defaultLocationResult] = await Promise.all([
+        // Get User Profile for Market ID
+        supabase.from("profiles").select("market_id, account_type").eq("id", user.id).single(),
+        // Fetch default location if needed (will be ignored if useDefault is false)
+        useDefault 
+            ? supabase.from("provider_locations" as never)
+                .select("id, address_line1, postal_code, city, public_label")
+                .eq("provider_id", user.id)
+                .eq("is_default", true)
+                .maybeSingle()
+            : Promise.resolve({ data: null })
+    ]);
 
+    const profile = profileResult.data;
     let marketId = profile?.market_id;
 
     if (!marketId) {
@@ -69,19 +82,13 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
         return state;
     }
 
-    const useDefault = formData.get("use_default_location") === "true";
     let addressFull = formData.get("address_full") as string;
     let locationId: string | null = null;
     let publicLabel = isDemo ? "[DEMO] Rheinbach" : "Rheinbach (Zentrum)"; // Fallback
 
     if (useDefault) {
-        // Fetch default location
-        const { data: defLocRaw } = await supabase.from("provider_locations" as never)
-            .select("id, address_line1, postal_code, city, public_label")
-            .eq("provider_id", user.id)
-            .eq("is_default", true)
-            .maybeSingle();
-        const defLoc = defLocRaw as unknown as {
+        // Use the pre-fetched default location
+        const defLoc = defaultLocationResult.data as unknown as {
             id: string;
             address_line1: string;
             postal_code: string;

@@ -383,7 +383,8 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
   const liveTable = "jobs";
   log("fetchJobs.live.table.start", { table: liveTable, mode: params.mode, status, limit, offset });
 
-  let q = supabase.from(liveTable).select("*");
+  // Use foreign key join to fetch creator profiles in a single query (eliminates N+1)
+  let q = supabase.from(liveTable).select("*, creator:profiles!jobs_posted_by_fkey(id, full_name, company_name, account_type)");
   if (params.mode === "feed") q = q.eq("status", status);
   if (params.mode === "my_jobs") q = q.eq("posted_by", params.userId);
   q = q.order("created_at", { ascending: false });
@@ -401,33 +402,23 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     return { ok: false, error: err, debug };
   }
 
-  let items: JobsListItem[] = Array.isArray(tableRes.data) ? tableRes.data.map(item => ({
-    ...mapJobsListItem(item),
-    is_applied: appliedJobIds.has(String(item.id))
-  })) : [];
+  let items: JobsListItem[] = Array.isArray(tableRes.data) ? tableRes.data.map(item => {
+    // Extract creator from the joined data
+    const creator = item.creator ? {
+      id: item.creator.id,
+      full_name: item.creator.full_name,
+      company_name: item.creator.company_name,
+      account_type: item.creator.account_type as AccountType
+    } : null;
+    
+    return {
+      ...mapJobsListItem(item),
+      is_applied: appliedJobIds.has(String(item.id)),
+      creator
+    };
+  }) : [];
 
   items = await enrichMarketsIfPossible(supabase, items, debug);
-
-  // Enrich with creator info
-  const creatorIds = Array.from(new Set(items.map(i => i.posted_by).filter(Boolean)));
-  if (creatorIds.length > 0) {
-    const { data: creators } = await supabase
-      .from("profiles")
-      .select("id, full_name, company_name, account_type")
-      .in("id", creatorIds);
-
-    const creatorMap = new Map(creators?.map(c => [c.id, c]));
-    items = items.map(i => {
-      const creator = creatorMap.get(i.posted_by);
-      return {
-        ...i,
-        creator: creator ? {
-          ...creator,
-          account_type: creator.account_type as AccountType
-        } : null
-      };
-    });
-  }
 
   log("fetchJobs.live.table.ok", { rows: items.length });
   return { ok: true, data: items, debug };

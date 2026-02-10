@@ -38,8 +38,21 @@ export async function applyToJob(formData: FormData | string) {
         return { error: "Nicht authentifiziert" };
     }
 
-    // Double check profile/verification
-    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single<Profile>();
+    // Parallelize profile and guardian check to reduce latency
+    const [profileResult, guardianResult] = await Promise.all([
+        // Select only required columns instead of *
+        supabase.from("profiles").select("id, account_type, birthdate").eq("id", user.id).single<Pick<Profile, "id" | "account_type" | "birthdate">>(),
+        // Check guardian status in parallel
+        (supabase as any)
+            .from("guardian_relationships")
+            .select("*", { count: 'exact', head: true })
+            .eq("child_id", user.id)
+            .eq("status", "active")
+    ]);
+
+    const profile = profileResult.data;
+    const guardianCount = guardianResult.count;
+
     const viewRes = await getEffectiveView({ userId: user.id, baseAccountType: profile?.account_type ?? null });
     if (!viewRes.ok) {
         return { error: `${viewRes.error.code ? `${viewRes.error.code}: ` : ""}${viewRes.error.message}` };
@@ -53,13 +66,7 @@ export async function applyToJob(formData: FormData | string) {
     // Check effective guardian status (Self-healing)
     // CRITICAL: We enforce that an ACTUAL relationship exists.
     // If the profile says "linked" but no relationship is found, we deny the application.
-    const { count } = await (supabase as any)
-        .from("guardian_relationships")
-        .select("*", { count: 'exact', head: true })
-        .eq("child_id", user.id)
-        .eq("status", "active");
-
-    const hasActiveGuardian = count !== null && count > 0;
+    const hasActiveGuardian = guardianCount !== null && guardianCount > 0;
 
     // If minor and no active guardian, block
     if (isMinor(profile.birthdate ?? null) && !hasActiveGuardian) {
