@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { JobCard } from "@/components/jobs/JobCard";
+import { JobsListSection } from "@/components/jobs/JobsListSection";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
 import { Briefcase, CheckCircle2, Clock, Filter, ListFilter } from "lucide-react";
 import type { JobsListItem } from "@/lib/types/jobbridge";
@@ -18,46 +19,17 @@ interface JobsListProps {
 
 export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canApply, guardianStatus }: JobsListProps) {
     const [selectedJob, setSelectedJob] = useState<JobsListItem | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'active' | 'waitlist' | 'applied'>('active');
     const [showFilterModal, setShowFilterModal] = useState(false);
 
-    // Section Component for Desktop
-    const Section = ({ title, icon: Icon, colorClass, jobs, emptyMsg, hiddenOnMobile, isWhiteTitle }: { title: string, icon: any, colorClass: string, jobs: JobsListItem[], emptyMsg: string, hiddenOnMobile?: boolean, isWhiteTitle?: boolean }) => (
-        <div className={cn("space-y-6", hiddenOnMobile ? "hidden lg:block" : "")}>
-            <h2 className={cn("text-xl font-bold flex items-center gap-3", isWhiteTitle ? "text-white" : colorClass)}>
-                <div className={cn("p-2 rounded-lg border", isWhiteTitle ? "bg-white/10 border-white/10 text-indigo-400" : "bg-white/5 border-white/10")}>
-                    <Icon size={20} />
-                </div>
-                {title}
-                <span className="text-sm font-medium bg-white/10 text-slate-400 px-2.5 py-0.5 rounded-full ml-auto lg:ml-2">
-                    {jobs.length}
-                </span>
-            </h2>
+    const handleJobSelect = useCallback((job: JobsListItem) => {
+        setSelectedJob(job);
 
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-                {jobs.length === 0 ? (
-                    <div className="col-span-full py-12 text-center rounded-2xl border border-dashed border-white/5 bg-white/[0.02]">
-                        <p className="text-slate-500 italic">{emptyMsg}</p>
-                    </div>
-                ) : (
-                    jobs.map(job => (
-                        <JobCard
-                            key={job.id}
-                            job={job}
-                            isDemo={isDemo}
-                            isApplied={title === 'Bereits Beworben'}
-                            isLocked={!canApply}
-                            hideStatusLabel={title === 'Bereits Beworben'}
-                            onClick={() => setSelectedJob(job)}
-                        />
-                    ))
-                )}
-            </div>
-        </div>
-    );
+        setIsDetailOpen(true);
+    }, []);
 
     return (
-
         <>
             {/* --- Mobile Navigation (Rounded Card "Job Card Style") --- */}
             <div className="flex justify-center mb-6 md:hidden w-full">
@@ -195,43 +167,53 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
             <div className="space-y-16 pb-20">
                 {/* Active Jobs Section */}
                 <div className={cn("animate-in fade-in slide-in-from-bottom-4 duration-500", activeTab === 'active' ? "block" : "hidden")}>
-                    <Section
+                    <JobsListSection
                         title="Aktuelle Angebote"
                         icon={Briefcase}
                         colorClass="text-indigo-400"
                         jobs={activeJobs}
                         emptyMsg="Keine neuen Jobs verfügbar."
                         isWhiteTitle={true}
+                        isDemo={isDemo}
+                        canApply={canApply}
+                        onSelect={handleJobSelect}
                     />
                 </div>
 
                 {/* Waitlist Section */}
                 <div className={cn("animate-in fade-in slide-in-from-bottom-4 duration-500", activeTab === 'waitlist' ? "block" : "hidden")}>
-                    <Section
+                    <JobsListSection
                         title="Warteliste"
                         icon={Clock}
                         colorClass="text-amber-400"
                         jobs={waitlistedJobs}
                         emptyMsg="Aktuell sind keine Jobs für die Warteliste verfügbar."
+                        isDemo={isDemo}
+                        canApply={canApply}
+                        onSelect={handleJobSelect}
                     />
                 </div>
 
                 {/* Applied Section */}
                 <div className={cn("animate-in fade-in slide-in-from-bottom-4 duration-500", activeTab === 'applied' ? "block" : "hidden")}>
-                    <Section
+                    <JobsListSection
                         title="Bereits Beworben"
                         icon={CheckCircle2}
                         colorClass="text-emerald-400"
                         jobs={appliedJobs}
                         emptyMsg="Noch keine Bewerbungen versendet."
+                        isDemo={isDemo}
+                        canApply={canApply}
+                        onSelect={handleJobSelect}
                     />
                 </div>
             </div>
 
             <JobDetailModal
                 job={selectedJob}
-                isOpen={!!selectedJob}
-                onClose={() => setSelectedJob(null)}
+                isOpen={isDetailOpen}
+                onClose={() => setIsDetailOpen(false)}
+                onClosed={() => setSelectedJob(null)}
                 canApply={canApply}
                 guardianStatus={guardianStatus}
             />

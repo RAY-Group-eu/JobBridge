@@ -40,7 +40,7 @@ export function Dashboard({ activeJobs, waitlistedJobs, appliedJobs, isDemo, can
                             isApplied={activeTab === 'applied' || title === 'Bereits Beworben'} // Hacky but effective
                             isLocked={!canApply}
                             hideStatusLabel={activeTab === 'applied' || title === 'Bereits Beworben'}
-                            onClick={() => setSelectedJob(job)}
+                            onSelect={() => setSelectedJob(job)}
                         />
                     ))
                 )}

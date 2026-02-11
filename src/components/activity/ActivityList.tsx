@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, memo, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import {
@@ -11,12 +11,13 @@ import {
     MessageSquare,
     Building2,
     MapPin,
-    Euro,
     Loader2
 } from "lucide-react";
-import { ApplicationDetailModal } from "@/components/activity/ApplicationDetailModal";
+import { ApplicationChatModal } from "@/components/activity/ApplicationChatModal";
+import { withdrawApplication, sendMessage } from "@/app/app-home/applications/actions";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/types/supabase";
+import { useRouter } from "next/navigation";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
@@ -24,20 +25,33 @@ interface ActivityListProps {
     applications: any[]; // Using any for joined data, can be typed strictly later
 }
 
+import { ActivityItem } from "@/components/activity/ActivityItem";
+
 export function ActivityList({ applications }: ActivityListProps) {
     const [selectedApp, setSelectedApp] = useState<any>(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const router = useRouter();
 
-    // Mock handlers for now
+    const handleSelectApp = useCallback((app: any) => {
+        setSelectedApp(app);
+        setIsChatOpen(true);
+    }, []);
+
     const handleWithdraw = async (reason: string) => {
-        console.log("Withdrawing application", selectedApp?.id, reason);
-        // await withdrawApplication(selectedApp.id, reason);
-        setSelectedApp(null);
+        if (!selectedApp) return;
+        await withdrawApplication(selectedApp.id, reason);
+        setIsChatOpen(false);
+        router.refresh();
     };
 
-    const handleSendMessage = async (message: string) => {
-        console.log("Sending message", selectedApp?.id, message);
-        // await sendMessage(selectedApp.id, message);
-    };
+    // Memoized Stats to prevent expensive recalculations on every render (e.g. when modal opens)
+    const stats = useMemo(() => {
+        return {
+            negotiating: applications.filter(a => ['negotiating', 'submitted', 'waitlisted'].includes(a.status)).length,
+            accepted: applications.filter(a => a.status === 'accepted').length,
+            rejected: applications.filter(a => ['rejected', 'withdrawn', 'cancelled'].includes(a.status)).length
+        };
+    }, [applications]);
 
     if (applications.length === 0) {
         return (
@@ -57,125 +71,58 @@ export function ActivityList({ applications }: ActivityListProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#111116] border border-white/5 p-4 rounded-2xl">
-                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Offen</div>
-                    <div className="text-2xl font-bold text-white">
-                        {applications.filter(a => ['submitted', 'pending'].includes(a.status)).length}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-[#111116] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <MessageSquare size={48} />
+                    </div>
+                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2">Verhandelt</div>
+                    <div className="text-3xl font-bold text-white">
+                        {stats.negotiating}
                     </div>
                 </div>
-                <div className="bg-[#111116] border border-white/5 p-4 rounded-2xl">
-                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">In Verhandlung</div>
-                    <div className="text-2xl font-bold text-indigo-400">
-                        {applications.filter(a => a.status === 'negotiating').length}
+                <div className="bg-[#111116] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CheckCircle2 size={48} className="text-emerald-500" />
+                    </div>
+                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2">Abgeschlossen</div>
+                    <div className="text-3xl font-bold text-emerald-400">
+                        {stats.accepted}
                     </div>
                 </div>
-                <div className="bg-[#111116] border border-white/5 p-4 rounded-2xl">
-                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Warteliste</div>
-                    <div className="text-2xl font-bold text-orange-400">
-                        {applications.filter(a => a.status === 'waitlisted').length}
+                <div className="bg-[#111116] border border-white/5 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <XCircle size={48} className="text-red-500" />
                     </div>
-                </div>
-                <div className="bg-[#111116] border border-white/5 p-4 rounded-2xl">
-                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Akzeptiert</div>
-                    <div className="text-2xl font-bold text-emerald-400">
-                        {applications.filter(a => a.status === 'accepted').length}
+                    <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2">Beendet</div>
+                    <div className="text-3xl font-bold text-slate-400">
+                        {stats.rejected}
                     </div>
                 </div>
             </div>
 
             <div className="space-y-4">
-                {applications.map((app) => {
-                    const status = app.status as ApplicationStatus;
-                    const isNew = new Date(app.created_at).getTime() > Date.now() - 1000 * 60 * 60 * 24; // 24h
+                <h3 className="text-lg font-bold text-white px-2">Deine Bewerbungen</h3>
 
-                    return (
-                        <div
-                            key={app.id}
-                            onClick={() => setSelectedApp(app)}
-                            className="group relative overflow-hidden rounded-2xl bg-[#111116] border border-white/5 hover:border-white/10 transition-all cursor-pointer hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5"
-                        >
-                            {/* Status Stripe */}
-                            <div className={cn("absolute left-0 top-0 bottom-0 w-1",
-                                status === 'accepted' ? "bg-emerald-500" :
-                                    status === 'negotiating' ? "bg-indigo-500" :
-                                        status === 'waitlisted' ? "bg-orange-500" :
-                                            status === 'rejected' ? "bg-red-500" :
-                                                "bg-slate-700"
-                            )} />
-
-                            <div className="p-5 pl-7 flex flex-col md:flex-row gap-6 md:items-center justify-between">
-                                {/* Job Info */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        {isNew && (
-                                            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 uppercase tracking-wide">
-                                                Neu
-                                            </span>
-                                        )}
-                                        <div className={cn("text-xs font-bold uppercase tracking-wider flex items-center gap-1.5",
-                                            status === 'accepted' ? "text-emerald-400" :
-                                                status === 'negotiating' ? "text-indigo-400" :
-                                                    status === 'waitlisted' ? "text-orange-400" :
-                                                        status === 'rejected' ? "text-red-400" :
-                                                            "text-slate-500"
-                                        )}>
-                                            {status === 'accepted' && <CheckCircle2 size={12} />}
-                                            {status === 'negotiating' && <MessageSquare size={12} />}
-                                            {status === 'waitlisted' && <Loader2 size={12} className="animate-spin-slow" />}
-                                            {status === 'rejected' && <XCircle size={12} />}
-                                            {status}
-                                        </div>
-                                        <span className="text-slate-600 text-xs">•</span>
-                                        <span className="text-slate-500 text-xs">
-                                            {formatDistanceToNow(new Date(app.created_at), { addSuffix: true, locale: de })}
-                                        </span>
-                                    </div>
-
-                                    <h3 className="text-lg font-bold text-white mb-1 group-hover:text-indigo-400 transition-colors truncate">
-                                        {app.job?.title}
-                                    </h3>
-
-                                    <div className="flex items-center gap-4 text-sm text-slate-400">
-                                        <span className="flex items-center gap-1.5">
-                                            <Building2 size={14} className="text-slate-600" />
-                                            {app.job?.creator?.company_name || "Privat"}
-                                        </span>
-                                        <span className="flex items-center gap-1.5">
-                                            <Euro size={14} className="text-slate-600" />
-                                            {app.job?.wage_hourly} €
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Right Side Actions/Status */}
-                                <div className="flex items-center gap-4 md:border-l md:border-white/5 md:pl-6">
-                                    {status === 'negotiating' && (
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-xs font-medium text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 mb-1">
-                                                1 neue Nachricht
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                                        <ArrowRight size={18} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                {applications.map((app) => (
+                    <ActivityItem
+                        key={app.id}
+                        app={app}
+                        onSelect={handleSelectApp}
+                    />
+                ))}
             </div>
 
-            <ApplicationDetailModal
-                isOpen={!!selectedApp}
-                onClose={() => setSelectedApp(null)}
+            {/* Chat Modal */}
+            <ApplicationChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                onClosed={() => setSelectedApp(null)}
                 application={selectedApp}
                 onWithdraw={handleWithdraw}
-                onSendMessage={handleSendMessage}
+                onSendMessage={sendMessage}
             />
         </div>
     );

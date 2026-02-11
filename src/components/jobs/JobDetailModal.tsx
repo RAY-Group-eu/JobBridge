@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, memo, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { X, MapPin, Euro, Calendar, ShieldCheck, Clock, Building2, Briefcase, ArrowRight, CheckCircle2 } from "lucide-react";
 import type { Database } from "@/lib/types/supabase";
@@ -8,6 +8,7 @@ import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
 import { VerificationRequiredModal } from "@/components/auth/VerificationRequiredModal";
 import { Lock } from "lucide-react";
 import { JobApplicationModal } from "@/components/jobs/JobApplicationModal";
+import { WithdrawButton } from "@/components/jobs/WithdrawButton";
 import dynamic from "next/dynamic";
 import { JobsListItem } from "@/lib/types/jobbridge";
 
@@ -24,20 +25,37 @@ interface JobDetailModalProps {
     job: JobsListItem | null;
     isOpen: boolean;
     onClose: () => void;
+    onClosed?: () => void;
     canApply: boolean;
     guardianStatus: string;
     context?: 'feed' | 'activity';
 }
-
-export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus, context = 'feed' }: JobDetailModalProps) {
+export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClose, onClosed, canApply, guardianStatus, context = 'feed' }: JobDetailModalProps) {
+    // ... component implementation ...
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
     const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
+    // Failsafe: Ensure overflow is cleaned up if Headless UI gets stuck
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+        return () => {
+            // Small timeout to allow Headless UI to finish if it's behaving, otherwise force it.
+            setTimeout(() => {
+                document.documentElement.style.removeProperty('overflow');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }, 50);
+        };
+    }, []);
+
+    // If no job is selected and we are not open, don't render.
+    // However, if we are open (animating out), we might still have job=null if handled poorly, 
+    // so we rely on parent to keep job populated until onClosed.
     if (!job) return null;
 
     return (
         <>
-            <Transition appear show={isOpen} as={Fragment}>
+            <Transition appear show={isOpen} as={Fragment} afterLeave={onClosed}>
                 <Dialog as="div" className="relative z-50" onClose={onClose}>
                     <Transition.Child
                         as={Fragment}
@@ -205,11 +223,13 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus,
                                             {job.is_applied ? (
                                                 <>
                                                     <p className="text-sm text-slate-400">
-                                                        Bewerbung erfolgreich gesendet
+                                                        {job.application_status === 'withdrawn' ? "Bewerbung zurückgezogen" :
+                                                            job.application_status === 'rejected' ? "Bewerbung abgelehnt" :
+                                                                "Bewerbung läuft"}
                                                     </p>
                                                     {context === 'feed' && (
                                                         <p className="text-xs text-slate-600 mt-0.5">
-                                                            Du kannst den Status in deinen Aktivitäten prüfen.
+                                                            Status: <span className="uppercase">{job.application_status}</span>
                                                         </p>
                                                     )}
                                                 </>
@@ -225,20 +245,17 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus,
                                             )}
                                         </div>
                                         {job.is_applied ? (
-                                            context === 'feed' ? (
-                                                <a href="/app-home/activities">
-                                                    <ButtonPrimary
-                                                        className="w-full md:w-auto px-10 py-4 text-lg shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.02] transition-all bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500/50"
-                                                    >
-                                                        <span className="flex items-center gap-3 font-bold">
-                                                            Zur Bewerbung <ArrowRight size={20} />
-                                                        </span>
-                                                    </ButtonPrimary>
-                                                </a>
+                                            ['submitted', 'waitlisted', 'negotiating', 'accepted'].includes(job.application_status || '') ? (
+                                                <div className="flex gap-2">
+                                                    <a href="/app-home/activities" className="px-6 py-3 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition-colors font-medium">
+                                                        Ansehen
+                                                    </a>
+                                                    <WithdrawButton applicationId={job.application_id!} />
+                                                </div>
                                             ) : (
-                                                <div className="px-6 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium flex items-center gap-2">
-                                                    <CheckCircle2 size={20} />
-                                                    Bereits beworben
+                                                <div className="px-6 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 font-medium flex items-center gap-2">
+                                                    <Briefcase size={20} />
+                                                    {job.application_status === 'withdrawn' ? "Zurückgezogen" : "Abgeschlossen"}
                                                 </div>
                                             )
                                         ) : (
@@ -285,4 +302,4 @@ export function JobDetailModal({ job, isOpen, onClose, canApply, guardianStatus,
             />
         </>
     );
-}
+});

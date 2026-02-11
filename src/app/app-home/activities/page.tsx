@@ -56,7 +56,6 @@ export default async function ActivityPage() {
                 account_type: Database["public"]["Enums"]["account_type"] | null;
             } | null;
         }) | null;
-        message?: string | null;
     };
 
     const applications = (data ?? []) as unknown as AppWithFullJob[];

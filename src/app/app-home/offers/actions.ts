@@ -310,7 +310,7 @@ export async function rejectApplicant(
     // Get application + job info for authorization and notification
     const { data: app } = await supabase
         .from("applications")
-        .select("user_id, status, job:jobs(posted_by, title)")
+        .select("user_id, status, job:jobs(id, posted_by, title, status)")
         .eq("id", applicationId)
         .single<any>();
 
@@ -321,9 +321,12 @@ export async function rejectApplicant(
         return { ok: false, error: { message: "Nicht berechtigt" } };
     }
 
-    if (app.status !== 'submitted') {
-        return { ok: false, error: { message: "Bewerbung ist nicht mehr offen" } };
+    // Allow rejecting submitted, negotiating, or accepted (Termination)
+    if (!['submitted', 'negotiating', 'accepted'].includes(app.status)) {
+        return { ok: false, error: { message: "Diese Bewerbung kann nicht mehr bearbeitet werden." } };
     }
+
+    const wasActive = ['negotiating', 'accepted'].includes(app.status);
 
     const updatePayload: any = { status: 'rejected' as const };
     if (rejectionReason) {
@@ -337,17 +340,6 @@ export async function rejectApplicant(
 
     if (error) return { ok: false, error: toErrorInfo(error) };
 
-    // Send notification
-    await (supabase as any).from("notifications").insert({
-        user_id: app.user_id,
-        type: "application_status",
-        title: "Bewerbung abgelehnt",
-        body: rejectionReason
-            ? `Deine Bewerbung für "${app.job.title}" wurde abgelehnt. Grund: ${rejectionReason}`
-            : `Deine Bewerbung für "${app.job.title}" wurde leider abgelehnt.`,
-        data: { route: "/app-home/activities" },
-    });
-
     // AUTO-PROMOTION from Waitlist
     const { data: waitlisted } = await supabase
         .from("applications")
@@ -359,10 +351,12 @@ export async function rejectApplicant(
         .maybeSingle();
 
     if (waitlisted) {
-        // Promote
+        // Promote to NEGOTIATING (Job stays RESERVED)
+        // User said: "Dann kommt quasi die zweite Person... und wenn keiner in der Warteliste ist, wird er ganz normal wieder online gemacht"
+        // Meaning: If someone is in waitlist, they take the spot. Job NOT online.
         await supabase
             .from("applications")
-            .update({ status: "submitted" })
+            .update({ status: "negotiating" })
             .eq("id", waitlisted.id);
 
         // Notify Provider
@@ -370,7 +364,7 @@ export async function rejectApplicant(
             user_id: user.id, // Provider
             type: "application_new",
             title: "Nachrücker aus Warteliste",
-            body: `Ein Bewerber ist von der Warteliste nachgerückt.`,
+            body: `Ein Platz wurde frei! Ein Bewerber ist von der Warteliste nachgerückt und ist nun im Gespräch.`,
             data: { route: "/app-home/applications" }
         });
         // Notify Candidate
@@ -378,12 +372,21 @@ export async function rejectApplicant(
             user_id: waitlisted.user_id,
             type: "application_update",
             title: "Gute Neuigkeiten!",
-            body: `Ein Platz wurde frei! Deine Bewerbung wurde aktiviert.`,
+            body: `Ein Platz wurde frei! Deine Bewerbung für ${app.job.title} wurde aktiviert.`,
             data: { route: "/app-home/activities" }
         });
+
+        // IMPORTANT: Ensure job is RESERVED (it might be already, but just in case)
+        if (app.job.status !== 'reserved') {
+            await supabase.from("jobs").update({ status: 'reserved' }).eq("id", app.job.id);
+        }
+
+    } else {
+        // NO Waitlist -> Check if job was reserved/filled -> Set to OPEN
+        if (wasActive && ['reserved', 'filled'].includes(app.job.status)) {
+            await supabase.from("jobs").update({ status: 'open' }).eq("id", app.job.id);
+        }
     }
-
-
 
     revalidatePath("/app-home/offers");
     revalidatePath("/app-home/applications");

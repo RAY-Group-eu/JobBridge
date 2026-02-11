@@ -7,10 +7,14 @@ import { acceptApplicant, rejectApplicant } from "@/app/app-home/offers/actions"
 import { RejectionModal } from "./RejectionModal";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { ApplicationChatModal } from "@/components/activity/ApplicationChatModal";
+import { sendMessage } from "@/app/app-home/applications/actions";
 
-export function ApplicantList({ applications }: { applications: ApplicationRow[] }) {
+export function ApplicantList({ applications, jobTitle }: { applications: ApplicationRow[], jobTitle: string }) {
     const router = useRouter();
     const [selectedApplicant, setSelectedApplicant] = useState<ApplicationRow | null>(null);
+    const [selectedChatApp, setSelectedChatApp] = useState<any | null>(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
     const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
@@ -148,30 +152,32 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
 
                     {/* Status / Actions */}
                     <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                        {app.status === 'submitted' ? (
+                        {['submitted', 'negotiating', 'accepted'].includes(app.status) ? (
                             <>
                                 <button
                                     onClick={() => handleRejectClick(app)}
                                     disabled={loadingId === app.id}
                                     className="p-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50"
-                                    title="Absagen"
+                                    title={app.status === 'submitted' ? "Absagen" : "Beenden/Kündigen"}
                                 >
                                     <X size={18} />
                                 </button>
-                                <button
-                                    onClick={() => handleAcceptClick(app.id)}
-                                    disabled={loadingId === app.id}
-                                    className="px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {loadingId === app.id ? (
-                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    ) : (
-                                        <>
-                                            <Check size={18} />
-                                            <span>Zusagen</span>
-                                        </>
-                                    )}
-                                </button>
+                                {app.status === 'submitted' && (
+                                    <button
+                                        onClick={() => handleAcceptClick(app.id)}
+                                        disabled={loadingId === app.id}
+                                        className="px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {loadingId === app.id ? (
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Check size={18} />
+                                                <span>Zusagen</span>
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </>
                         ) : (
                             (() => {
@@ -184,7 +190,11 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                                 );
                             })()
                         )}
-                        <button className="p-2.5 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 transition-colors" title="Chat">
+                        <button
+                            onClick={() => setSelectedChatApp({ ...app, job: { title: jobTitle } })}
+                            className="p-2.5 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 transition-colors"
+                            title="Chat"
+                        >
                             <MessageSquare size={18} />
                         </button>
                     </div>
@@ -232,6 +242,20 @@ export function ApplicantList({ applications }: { applications: ApplicationRow[]
                 onClose={() => setIsRejectionModalOpen(false)}
                 onConfirm={handleRejectConfirm}
                 applicantName={selectedApplicant?.applicant?.full_name || "Bewerber"}
+            />
+
+            <ApplicationChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                onClosed={() => setSelectedChatApp(null)}
+                application={selectedChatApp}
+                currentUserRole="provider"
+                onReject={async (reason) => {
+                    await rejectApplicant(selectedChatApp.id, reason);
+                    setIsChatOpen(false); // Close modal on reject
+                    router.refresh();
+                }}
+                onSendMessage={sendMessage}
             />
         </div>
     );

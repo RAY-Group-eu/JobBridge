@@ -12,14 +12,14 @@ interface JobCardProps {
     isApplied?: boolean;
     isLocked?: boolean;
     hideStatusLabel?: boolean;
-    onClick: () => void;
+    onSelect: (job: JobsListItem) => void;
 }
 
-export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, onClick }: JobCardProps) {
+export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, onSelect }: JobCardProps) {
     return (
         <div
-            onClick={onClick}
-            className={`group relative overflow-hidden rounded-2xl border backdrop-blur-xl p-6 transition-all duration-300 hover:-translate-y-1 cursor-pointer
+            onClick={() => onSelect(job)}
+            className={`group relative overflow-hidden rounded-2xl border bg-slate-900/40 p-6 transition-all duration-300 hover:-translate-y-1 cursor-pointer
                 ${isApplied
                     ? "bg-slate-900/50 grayscale-[0.5] hover:grayscale-0 hover:bg-slate-900/80 border-white/5"
                     : isLocked

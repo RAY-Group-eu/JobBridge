@@ -139,9 +139,9 @@ export type FetchJobsParams = {
   offset?: number;
 };
 
-/** Fetch the set of job IDs the current user has applied to. */
-async function fetchAppliedJobIds(userId: string): Promise<Set<string>> {
-  if (!userId) return new Set();
+/** Fetch the map of job IDs -> Application Data the current user has applied to. */
+async function fetchAppliedJobIds(userId: string): Promise<Map<string, { id: string; status: ApplicationStatus }>> {
+  if (!userId) return new Map();
 
   // Try admin client to bypass RLS; fall back to user client.
   let client: SupabaseClient<Database>;
@@ -154,14 +154,14 @@ async function fetchAppliedJobIds(userId: string): Promise<Set<string>> {
 
   const { data, error } = await client
     .from("applications")
-    .select("job_id")
+    .select("id, job_id, status")
     .eq("user_id", userId);
 
   if (error) {
     console.warn("[DAL] fetchAppliedJobIds error", error.message);
-    return new Set();
+    return new Map();
   }
-  return new Set(data?.map((a) => a.job_id) ?? []);
+  return new Map(data?.map((a) => [a.job_id, { id: a.id, status: a.status as ApplicationStatus }]) ?? []);
 }
 
 /** Map a raw DB row to the normalized `JobsListItem` shape. */
@@ -267,10 +267,15 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
   const { data, error } = await q;
   if (error) return { ok: false, error: toErrorInfo(error) };
 
-  let items = (data ?? []).map((row) => ({
-    ...toJobsListItem(row),
-    is_applied: appliedJobIds.has(row.id),
-  }));
+  let items = (data ?? []).map((row) => {
+    const appData = appliedJobIds.get(row.id);
+    return {
+      ...toJobsListItem(row),
+      is_applied: !!appData,
+      application_id: appData?.id || null,
+      application_status: appData?.status || null
+    };
+  });
 
   items = await enrichWithMarketNames(supabase, items) as typeof items;
   items = await enrichWithCreators(supabase, items) as typeof items;
@@ -504,7 +509,8 @@ export async function fetchCandidateApplications(userId: string): Promise<Result
     job: {
       ...toJobsListItem(row.job),
       is_applied: true,
-      application_status: row.status
+      application_status: row.status,
+      application_id: row.id
     } as JobsListItem,
     status: row.status as any // force cast
   }));

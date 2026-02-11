@@ -57,7 +57,7 @@ export default async function JobsPage() {
         fetchCandidateApplications(profile.id)
     ]);
 
-    const activeJobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
+    const rawActiveJobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
     const allApps = appsRes.ok ? appsRes.data : [];
 
     const waitlistedJobs = allApps
@@ -67,6 +67,13 @@ export default async function JobsPage() {
     const appliedJobs = allApps
         .filter(a => ['submitted', 'pending', 'negotiating', 'accepted', 'rejected'].includes(a.status))
         .map(a => a.job);
+
+    // Filter activeJobs to exclude those that are already applied
+    const appliedJobIds = new Set(appliedJobs.map(j => j.id));
+    // Also exclude waitlisted jobs if they appear in active (though status should handle it, play safe)
+    const waitlistedJobIds = new Set(waitlistedJobs.map(j => j.id));
+
+    const activeJobs = rawActiveJobs.filter(job => !appliedJobIds.has(job.id) && !waitlistedJobIds.has(job.id));
 
     return (
         <div className="container mx-auto py-2 px-4 md:px-6">

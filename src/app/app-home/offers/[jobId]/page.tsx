@@ -85,7 +85,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                     Bewerbungen
                     <span className="text-sm font-normal text-slate-400 bg-white/5 px-3 py-1 rounded-full">{applications?.length || 0}</span>
                 </h2>
-                <ApplicantList applications={applications || []} />
+                <ApplicantList applications={applications || []} jobTitle={job.title} />
             </div>
 
 
