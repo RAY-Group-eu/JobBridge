@@ -202,11 +202,13 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
                                                     <MapPin size={16} /> Standort
                                                 </h4>
                                                 <div className="rounded-2xl border border-white/5 bg-[#121217] p-1 flex-1 min-h-[160px] relative flex items-center justify-center overflow-hidden group">
-                                                    <LeafletMap
-                                                        center={[50.6256, 6.9493]}
-                                                        zoom={14}
-                                                        className="rounded-xl"
-                                                    />
+                                                    {isOpen && (
+                                                        <LeafletMap
+                                                            center={[50.6256, 6.9493]}
+                                                            zoom={14}
+                                                            className="rounded-xl"
+                                                        />
+                                                    )}
 
                                                     {/* Overlay for "Approximate Location" text style if desired, or relying on map visual */}
                                                     <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 z-[400]">

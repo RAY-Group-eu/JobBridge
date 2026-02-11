@@ -56,6 +56,7 @@ export default function LeafletMap({ center, zoom = 13, className }: LeafletMapP
             dragging={false} // Static feel as per "screenshot" look, but interactive enough if user wants
             zoomControl={false} // Cleaner look
             doubleClickZoom={false}
+            preferCanvas={true}
         >
             <style jsx global>{`
                 .leaflet-control-attribution {
