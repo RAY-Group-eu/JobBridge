@@ -1,24 +1,38 @@
 "use client";
 
 import { createJob } from "@/app/app-home/offers/actions";
-import { Loader2, Save, MapPin } from "lucide-react";
+import { Loader2, Save, MapPin, FileEdit } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { useActionState, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ErrorInfo } from "@/lib/types/jobbridge";
 import Link from "next/link";
 
-function SubmitButton() {
+function SubmitButtons() {
     const { pending } = useFormStatus();
     return (
-        <button
-            type="submit"
-            disabled={pending}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-            {pending ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            <span>Veröffentlichen</span>
-        </button>
+        <div className="flex gap-3">
+            <button
+                type="submit"
+                name="intent"
+                value="draft"
+                disabled={pending}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+            >
+                {pending ? <Loader2 size={18} className="animate-spin" /> : <FileEdit size={18} />}
+                <span>Als Entwurf speichern</span>
+            </button>
+            <button
+                type="submit"
+                name="intent"
+                value="create"
+                disabled={pending}
+                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {pending ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                <span>Veröffentlichen</span>
+            </button>
+        </div>
     );
 }
 
@@ -176,9 +190,9 @@ export function CreateJobForm({ defaultLocation }: { defaultLocation?: DefaultLo
                 </div>
             )}
 
-            <div className="pt-4 flex items-center justify-between border-t border-white/5 mt-6">
+            <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/5 mt-6 gap-4">
                 <p className="text-xs text-slate-500">Dein Job wird für Jobsuchende in Rheinbach sichtbar sein.</p>
-                <SubmitButton />
+                <SubmitButtons />
             </div>
         </form>
     );

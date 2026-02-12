@@ -45,6 +45,7 @@ export type JobsListItem = {
     full_name: string | null;
     company_name: string | null;
     account_type: AccountType;
+    avatar_url?: string | null;
   } | null;
   category?: string | null;
   address_reveal_policy?: string | null;
@@ -55,7 +56,7 @@ export type JobsListItem = {
 export type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"] & {
   applicant?: {
     full_name: string | null;
-    // avatar_url removed as it doesn't exist on profile
+    avatar_url?: string | null;
   } | null;
 };
 

@@ -146,6 +146,8 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
         redirect("/app-home/offers");
     }
 
+    const jobStatus: Database["public"]["Enums"]["job_status"] = intent === "draft" ? "draft" : "open";
+
     const res = await createJobDAL({
         view,
         userId: user.id,
@@ -155,12 +157,12 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
             title: validated.data.title,
             description: validated.data.description,
             wage_hourly: validated.data.wage ?? 12.00,
-            status: "open",
+            status: jobStatus,
             category: "other",
             public_location_label: publicLabel,
             public_lat: 50.63,
             public_lng: 6.95,
-            address_reveal_policy: "on_accept"
+            address_reveal_policy: "after_accept"
         },
         privateDetails,
     });

@@ -1,10 +1,10 @@
 import { requireCompleteProfile } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { getEffectiveView } from "@/lib/dal/jobbridge";
 import type { Database } from "@/lib/types/supabase";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ActivityList } from "@/components/activity/ActivityList";
+import { ProviderActivityList } from "@/components/activity/ProviderActivityList";
 
 export default async function ActivityPage() {
     const { profile } = await requireCompleteProfile();
@@ -13,19 +13,9 @@ export default async function ActivityPage() {
     const viewRole = viewRes.ok ? viewRes.data.viewRole : (profile.account_type ?? "job_seeker");
     const source = viewRes.ok ? viewRes.data.source : "live";
 
-    if (viewRole !== "job_seeker") {
-        redirect("/app-home/offers");
-    }
-
     const supabase = await supabaseServer();
     const appsTable: "applications" | "demo_applications" = source === "demo" ? "demo_applications" : "applications";
     const jobsRelation: "jobs" | "demo_jobs" = source === "demo" ? "demo_jobs" : "jobs";
-
-    type ActivityApp = Database["public"]["Tables"]["applications"]["Row"] & {
-        job: { title: string; description: string; status: Database["public"]["Enums"]["job_status"] } | null;
-        message?: string | null;
-    };
-
 
     let client = supabase;
     try {
@@ -35,13 +25,86 @@ export default async function ActivityPage() {
         console.warn("Admin client not available for activity page", e);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // JOB PROVIDER VIEW (Incoming Applications)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (viewRole === "job_provider") {
+        // Fetch applications where the related JOB is posted by this user
+        // We use !inner join on jobs to filter by posted_by
+        const { data, error } = await client
+            .from(appsTable)
+            .select(`
+                *,
+                job:${jobsRelation}!inner(
+                    title, 
+                    status, 
+                    posted_by
+                ),
+                applicant:profiles!user_id(
+                    id,
+                    full_name,
+                    bio,
+                    skills,
+                    interests,
+                    city,
+                    country,
+                    birthdate,
+                    created_at,
+                    avatar_url,
+                    provider_verification_status
+                )
+            `)
+            .eq(`${jobsRelation}.posted_by`, profile.id)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.error("Provider activity fetch error:", error);
+            return (
+                <div className="container mx-auto py-12 px-4 text-red-400">
+                    Fehler beim Laden der Aktivitäten.
+                </div>
+            );
+        }
+
+        // Type assertion to ensure compatibility with ProviderActivityList
+        const applications: any[] = (data ?? []).map((row: any) => ({
+            ...row,
+            job: Array.isArray(row.job) ? row.job[0] : row.job, // Handle potential array return from join
+            applicant: Array.isArray(row.applicant) ? row.applicant[0] : row.applicant
+        }));
+
+        return (
+            <div className="container mx-auto py-12 px-4 md:px-6">
+                <div className="mx-auto max-w-6xl space-y-8">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Eingehende Bewerbungen</h1>
+                            <p className="text-slate-400">Verwalte Bewerbungen und kommuniziere direkt mit Talenten.</p>
+                        </div>
+                    </div>
+                    {/* @ts-ignore - Supabase types are tricky with joins, verified manually */}
+                    <ProviderActivityList applications={applications} userId={profile.id} />
+                </div>
+            </div>
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // JOB SEEKER VIEW (My Applications) - EXISTING LOGIC
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    type ActivityApp = Database["public"]["Tables"]["applications"]["Row"] & {
+        job: { title: string; description: string; status: Database["public"]["Enums"]["job_status"] } | null;
+        message?: string | null;
+    };
+
     const { data } = await client
         .from(appsTable)
         .select(`
             *,
             job:${jobsRelation}(
                 *,
-                creator:profiles!jobs_posted_by_fkey(full_name, company_name, account_type)
+                creator:profiles!jobs_posted_by_fkey(full_name, company_name, account_type, avatar_url)
             )
         `)
         .eq("user_id", profile.id)
@@ -59,11 +122,6 @@ export default async function ActivityPage() {
     };
 
     const applications = (data ?? []) as unknown as AppWithFullJob[];
-
-    // Calculate stats
-    const total = applications?.length || 0;
-    const accepted = applications?.filter(a => a.status === 'accepted').length || 0;
-    const rejected = applications?.filter(a => a.status === 'rejected').length || 0;
 
     return (
         <div className="container mx-auto py-12 px-4 md:px-6">

@@ -135,28 +135,31 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
                                                 {job.title}
                                             </Dialog.Title>
 
-                                            <div className="flex flex-wrap items-center gap-6 text-slate-300 font-medium">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-400">
+                                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-6 text-slate-300 font-medium w-full sm:w-auto">
+                                                <div className="flex items-center justify-center sm:justify-start gap-2 bg-white/5 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none">
+                                                    <div className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-400 shrink-0">
                                                         <Euro size={18} />
                                                     </div>
                                                     <span className="text-lg text-white">{job.wage_hourly} € <span className="text-slate-500 text-sm">/ Std.</span></span>
                                                 </div>
+
                                                 <div className="w-px h-8 bg-white/10 hidden sm:block" />
-                                                <div className="flex items-center gap-2">
-                                                    <div className="p-1.5 rounded-full bg-blue-500/10 text-blue-400">
+
+                                                <div className="flex items-center justify-center sm:justify-start gap-2 bg-white/5 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none">
+                                                    <div className="p-1.5 rounded-full bg-blue-500/10 text-blue-400 shrink-0">
                                                         <MapPin size={18} />
                                                     </div>
-                                                    <span>{job.public_location_label || "Rheinbach"}</span>
+                                                    <span className="truncate max-w-[120px] sm:max-w-none">{job.public_location_label || "Rheinbach"}</span>
                                                 </div>
+
                                                 {job.creator && (
                                                     <>
                                                         <div className="w-px h-8 bg-white/10 hidden sm:block" />
-                                                        <a href={`/app-home/profile/view/${job.posted_by}`} className="flex items-center gap-2 group hover:bg-white/5 p-1 rounded-lg transition-colors">
+                                                        <a href={`/app-home/profile/view/${job.posted_by}`} className="col-span-2 sm:col-span-1 flex items-center justify-center sm:justify-start gap-2 group hover:bg-white/5 p-1 rounded-lg transition-colors mt-2 sm:mt-0">
                                                             <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all">
                                                                 {(job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()}
                                                             </div>
-                                                            <div className="flex flex-col">
+                                                            <div className="flex flex-col items-start">
                                                                 <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Erstellt von</span>
                                                                 <span className="text-sm text-white group-hover:text-indigo-300 transition-colors">{job.creator.company_name || job.creator.full_name || "Unbekannt"}</span>
                                                             </div>
@@ -164,7 +167,7 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
                                                     </>
                                                 )}
                                                 {job.distance_km != null && (
-                                                    <div className="flex items-center gap-2 text-slate-500">
+                                                    <div className="col-span-2 sm:col-span-1 flex items-center justify-center sm:justify-start gap-2 text-slate-500 mt-1 sm:mt-0">
                                                         <Clock size={16} />
                                                         <span>{Math.round(job.distance_km * 10) / 10} km</span>
                                                     </div>

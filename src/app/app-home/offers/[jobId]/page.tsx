@@ -2,10 +2,9 @@ import { requireCompleteProfile } from "@/lib/auth";
 import { getJobByIdService } from "@/lib/services/jobs";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, MapPin, Banknote } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Euro, Building2, Calendar, FileText, ArrowRight } from "lucide-react";
 import { Database } from "@/lib/types/supabase";
 import { getEffectiveView, fetchJobApplications } from "@/lib/dal/jobbridge";
-import { ApplicantList } from "@/components/offers/ApplicantList";
 import { ApplicationRow } from "@/lib/types/jobbridge";
 
 type JobRow = Database['public']['Tables']['jobs']['Row'];
@@ -32,63 +31,144 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
     // Ownership check
     if (job.posted_by !== profile.id) {
-        // unauthorized for editing/viewing as owner
         redirect("/app-home/offers");
     }
 
-    // Fetch Applications
+    // Fetch Applications count only
     const appRes = await fetchJobApplications(jobId, profile.id);
-    const applications = appRes.ok ? appRes.data : [];
+    const applicationCount = appRes.ok ? appRes.data.length : 0;
+
+    // Status logic for the tile
+    const getStatusInfo = () => {
+        if (job.status === 'draft') return { label: "Entwurf", color: "text-slate-400", bg: "bg-slate-500/10", glow: "shadow-slate-500/20" };
+        if (job.status === 'closed') return { label: "Abgeschlossen", color: "text-red-400", bg: "bg-red-500/10", glow: "shadow-red-500/20" };
+        if (applicationCount > 0) return { label: "In Verhandlung", color: "text-amber-400", bg: "bg-amber-500/10", glow: "shadow-amber-500/20" };
+        return { label: "Online & Sucht", color: "text-emerald-400", bg: "bg-emerald-500/10", glow: "shadow-emerald-500/20" };
+    };
+
+    const statusInfo = getStatusInfo();
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6 max-w-4xl">
-            <Link href="/app-home/offers" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors">
-                <ArrowLeft size={18} />
+            <Link href="/app-home/offers" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors font-medium text-sm group">
+                <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                 <span>Zurück zu meinen Jobs</span>
             </Link>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">{job.title}</h1>
-                        <div className="flex flex-wrap items-center gap-4 text-slate-400 text-sm">
-                            <span className="flex items-center gap-1.5">
-                                <Clock size={16} />
-                                Erstellt am {new Date(job.created_at).toLocaleDateString()}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <Banknote size={16} />
-                                {job.wage_hourly} € / h
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <MapPin size={16} />
-                                {job.public_location_label}
-                            </span>
+            {/* Premium Job Detail Card */}
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0B0C10] shadow-2xl">
+                {/* Background Design Elements */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#312e81,transparent)] opacity-30 pointer-events-none" />
+
+                {/* Refined Grid: Top-right only, very subtle */}
+                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(circle_at_100%_0%,black,transparent_70%)] pointer-events-none" />
+
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none translate-y-1/2 -translate-x-1/2" />
+
+                {/* Status Bar */}
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent opacity-50" />
+
+                <div className="relative z-10 p-8 md:p-10">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 border-b border-white/5 pb-8">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-indigo-400 shadow-inner">
+                                    <Building2 size={28} />
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 ${job.status === 'open' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                    job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/20 text-slate-400' :
+                                        job.status === 'draft' ? 'bg-slate-500/10 border-slate-500/20 text-slate-300' :
+                                            'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                    }`}>
+                                    {job.status === 'open' ? <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" /> :
+                                        job.status === 'closed' ? <div className="w-1.5 h-1.5 rounded-full bg-slate-400" /> :
+                                            job.status === 'draft' ? <div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> :
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                    }
+                                    {job.status === 'open' ? 'Aktiv veröffentlicht' :
+                                        job.status === 'closed' ? 'Geschlossen' :
+                                            job.status === 'draft' ? 'Entwurf' : job.status}
+                                </span>
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight tracking-tight">{job.title}</h1>
+                            <p className="text-slate-400 flex items-center gap-2 text-sm">
+                                <Calendar size={14} className="text-slate-500" />
+                                Erstellt am {new Date(job.created_at).toLocaleDateString("de-DE", { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col gap-3 min-w-[200px]">
+                            <button disabled className="w-full py-3 px-4 rounded-xl bg-white/[0.03] hover:bg-white/5 border border-white/10 text-slate-400 font-medium transition-all flex items-center justify-center gap-2 cursor-not-allowed text-xs opacity-50">
+                                <FileText size={16} />
+                                <span>Bearbeiten (Bald verfügbar)</span>
+                            </button>
                         </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${job.status === 'open' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                        job.status === 'closed' ? 'bg-slate-500/10 border-slate-500/30 text-slate-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                        }`}>
-                        {job.status === 'open' ? 'Aktiv' : job.status === 'closed' ? 'Geschlossen' : job.status}
-                    </span>
-                </div>
 
-                <div className="prose prose-invert max-w-none">
-                    <h3 className="text-lg font-semibold text-white mb-2">Beschreibung</h3>
-                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed mb-8">{job.description}</p>
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-10">
+                        <div className="p-4 md:p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-all hover:bg-white/[0.04] hover:border-white/10 group/tile">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_-5px_rgba(52,211,153,0.2)] group-hover/tile:scale-110 transition-transform shrink-0">
+                                <Euro size={20} className="md:w-6 md:h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Stundenlohn</p>
+                                <p className="text-lg md:text-xl font-black text-white leading-tight">{job.wage_hourly} € <span className="text-xs md:text-sm font-medium text-slate-500">/ h</span></p>
+                            </div>
+                        </div>
+                        <div className="p-4 md:p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-all hover:bg-white/[0.04] hover:border-white/10 group/tile">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 shadow-[0_0_20px_-5px_rgba(99,102,241,0.2)] group-hover/tile:scale-110 transition-transform shrink-0">
+                                <MapPin size={20} className="md:w-6 md:h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Einsatzort</p>
+                                <p className="text-lg md:text-xl font-black text-white truncate w-full leading-tight">{job.public_location_label || "Rheinbach"}</p>
+                            </div>
+                        </div>
+                        <div className="p-4 md:p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center gap-4 transition-all hover:bg-white/[0.04] hover:border-white/10 col-span-2 lg:col-span-1 group/tile">
+                            {/* Status Tile */}
+                            <div className="flex-1 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl ${statusInfo.bg} flex items-center justify-center ${statusInfo.color} shadow-[0_0_20px_-5px_rgba(255,255,255,0.05)] group-hover/tile:scale-110 transition-transform shrink-0`}>
+                                        <Clock size={20} className="md:w-6 md:h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Status</p>
+                                        <p className={`text-lg md:text-xl font-black ${statusInfo.color} leading-tight`}>{statusInfo.label}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="prose prose-invert max-w-none prose-p:text-slate-300 prose-p:leading-relaxed prose-headings:text-white">
+                        <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+                            <FileText size={20} className="text-indigo-400" />
+                            Aufgabenbeschreibung
+                        </h3>
+                        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-300 whitespace-pre-wrap">
+                            {job.description}
+                        </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="mt-10 pt-8 border-t border-white/5 flex flex-col items-center">
+                        <Link
+                            href="/app-home/activities"
+                            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white text-black font-bold text-lg rounded-2xl hover:bg-slate-200 transition-all shadow-[0_0_40px_-5px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_-10px_rgba(255,255,255,0.3)] hover:-translate-y-1"
+                        >
+                            <span>Zu den Aktivitäten (Bewerbungen)</span>
+                            <ArrowRight className="transition-transform group-hover:translate-x-1" size={20} />
+                        </Link>
+                        <p className="text-sm text-slate-500 mt-4">Verwalte Bewerbungen und Chats im Aktivitäten-Tab</p>
+                    </div>
+
                 </div>
             </div>
-
-            {/* Application Management Section */}
-            <div className="mt-8">
-                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                    Bewerbungen
-                    <span className="text-sm font-normal text-slate-400 bg-white/5 px-3 py-1 rounded-full">{applications?.length || 0}</span>
-                </h2>
-                <ApplicantList applications={applications || []} jobTitle={job.title} />
-            </div>
-
-
         </div>
     );
 }

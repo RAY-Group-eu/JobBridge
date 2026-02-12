@@ -23,6 +23,13 @@ export default async function NewOfferPage() {
         redirect("/app-home/jobs");
     }
 
+    // Provider Verification Guard
+    const isVerified = profile.provider_verification_status === 'verified';
+    if (!isVerified) {
+        const { VerificationRequiredGuard } = await import("@/components/jobs/VerificationRequiredGuard");
+        return <VerificationRequiredGuard />;
+    }
+
     const supabase = await supabaseServer();
     const { data: defaultLocationRaw } = await supabase.from("provider_locations" as never)
         .select("*")

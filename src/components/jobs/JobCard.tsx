@@ -12,10 +12,79 @@ interface JobCardProps {
     isApplied?: boolean;
     isLocked?: boolean;
     hideStatusLabel?: boolean;
+    providerStatus?: "draft" | "open" | "closed" | "reviewing" | "filled" | "reserved";
     onSelect: (job: JobsListItem) => void;
 }
 
-export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, onSelect }: JobCardProps) {
+export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, providerStatus, onSelect }: JobCardProps) {
+    const getStatusBadge = () => {
+        if (providerStatus) {
+            switch (providerStatus) {
+                case 'draft':
+                    return (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 border border-slate-400/30 px-1.5 py-0.5 rounded bg-white/5 ml-2">
+                            Entwurf
+                        </span>
+                    );
+                case 'closed':
+                    return (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 border border-slate-400/30 px-1.5 py-0.5 rounded bg-white/5 ml-2">
+                            Geschlossen
+                        </span>
+                    );
+                case 'filled':
+                    return (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-blue-400 border border-blue-400/30 px-1.5 py-0.5 rounded bg-blue-400/10 ml-2">
+                            Vergeben
+                        </span>
+                    );
+                case 'reviewing':
+                    return (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 border border-purple-400/30 px-1.5 py-0.5 rounded bg-purple-400/10 ml-2">
+                            In Prüfung
+                        </span>
+                    );
+                case 'reserved':
+                    return (
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 border border-amber-400/30 px-1.5 py-0.5 rounded bg-amber-400/10 ml-2">
+                            Reserviert
+                        </span>
+                    );
+                case 'open':
+                    return null; // Standard
+            }
+        }
+        if (isApplied && !hideStatusLabel) {
+            return (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 border border-emerald-400/30 px-1.5 py-0.5 rounded bg-emerald-400/10 ml-2 flex items-center gap-1">
+                    Bereits beworben
+                </span>
+            );
+        }
+        if (job.status === "draft") {
+            return (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 border border-slate-400/30 px-1.5 py-0.5 rounded bg-white/5 ml-2">
+                    Entwurf
+                </span>
+            );
+        }
+        if (job.status === "closed") {
+            return (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-red-400 border border-red-400/30 px-1.5 py-0.5 rounded bg-red-400/10 ml-2">
+                    Geschlossen
+                </span>
+            );
+        }
+        if (job.status === "open") {
+            return (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 border border-emerald-400/30 px-1.5 py-0.5 rounded bg-emerald-400/10 ml-2">
+                    Aktiv
+                </span>
+            );
+        }
+        return null;
+    };
+
     return (
         <div
             onClick={() => onSelect(job)}
@@ -28,9 +97,9 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                 }
             `}
         >
-            {/* Locked Overlay */}
+            {/* Locked Overlay (Desktop Only) */}
             {isLocked && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="hidden md:absolute md:inset-0 md:z-20 md:flex md:items-center md:justify-center md:bg-slate-950/60 md:backdrop-blur-[2px] md:opacity-0 md:group-hover:opacity-100 md:transition-opacity md:duration-300">
                     <div className="flex flex-col items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                         <div className="w-12 h-12 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center text-slate-400 shadow-xl">
                             <Lock size={20} />
@@ -52,7 +121,7 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                 <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-indigo-900/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             )}
 
-            <div className={`relative z-10 flex flex-col h-full ${isLocked ? 'opacity-50 blur-[1px] group-hover:blur-sm transition-all duration-300' : ''}`}>
+            <div className={`relative z-10 flex flex-col h-full ${isLocked ? 'md:opacity-50 md:blur-[1px] md:group-hover:blur-sm transition-all duration-300' : ''}`}>
                 <div className="flex justify-between items-start mb-5">
                     <div className="flex items-start gap-4">
                         <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 text-indigo-400 border border-indigo-500/10 group-hover:from-indigo-500/25 group-hover:to-violet-500/15 group-hover:border-indigo-500/25 group-hover:text-indigo-300 transition-all duration-300">
@@ -69,16 +138,12 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                                         Demo
                                     </span>
                                 )}
-                                {isApplied && !hideStatusLabel && (
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 border border-emerald-400/30 px-1.5 py-0.5 rounded bg-emerald-400/10 ml-2 flex items-center gap-1">
-                                        Bereits beworben
-                                    </span>
-                                )}
+                                {getStatusBadge()}
                             </p>
                         </div>
                     </div>
                     {/* Always show Lock icon in corner if locked, separate from overlay */}
-                    {isLocked && <Lock size={16} className="text-slate-600" />}
+                    {isLocked && <Lock size={16} className="text-slate-600 md:hidden" />}
                 </div>
 
                 <p className="text-slate-300 text-base line-clamp-2 mb-6 leading-relaxed flex-grow font-light">
@@ -102,8 +167,12 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                                 <>
                                     <span className="text-slate-700">•</span>
                                     <div className="flex items-center gap-1.5 text-slate-400">
-                                        <div className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[9px] font-bold text-indigo-400">
-                                            {(job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()}
+                                        <div className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[9px] font-bold text-indigo-400 overflow-hidden">
+                                            {job.creator.avatar_url ? (
+                                                <img src={job.creator.avatar_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                (job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()
+                                            )}
                                         </div>
                                         <span className="truncate max-w-[100px]">
                                             {job.creator.company_name || job.creator.full_name || "Unbekannt"}

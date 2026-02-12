@@ -640,9 +640,18 @@ export function OnboardingWizard({
                     <>
                       {loading && <Loader text="Session wird geprüft..." />}
                       <div className="space-y-4 mt-2">
-                        <ButtonPrimary onClick={handleEmailConfirmation} loading={loading} className="w-full h-14 text-lg font-semibold shadow-[0_0_20px_rgba(56,189,248,0.3)]">
-                          Weiter prüfen
-                        </ButtonPrimary>
+                        <div className="pt-2">
+                          <p className="text-xs text-slate-400 mb-2">
+                            Falls du nicht automatisch weitergeleitet wirst:
+                          </p>
+                          <ButtonPrimary
+                            onClick={() => checkSessionAfterEmailConfirm()}
+                            loading={loading}
+                            className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white"
+                          >
+                            Jetzt weiter
+                          </ButtonPrimary>
+                        </div>
                         <div className="flex flex-col gap-3">
                           <ButtonSecondary onClick={handleResendConfirmation} className="w-full" disabled={resendCooldown > 0 || resendLoading}>
                             {resendCooldown > 0 ? `Erneut senden (${resendCooldown}s)` : "Bestätigung erneut senden"}

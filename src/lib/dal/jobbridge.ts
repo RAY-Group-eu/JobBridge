@@ -214,7 +214,7 @@ async function enrichWithCreators(
 
   const { data: creators } = await supabase
     .from("profiles")
-    .select("id, full_name, company_name, account_type")
+    .select("id, full_name, company_name, account_type, avatar_url")
     .in("id", ids);
 
   if (!creators) return items;
@@ -366,7 +366,7 @@ export async function createJob(params: {
         wage_hourly: params.job.wage_hourly ?? null,
         status: params.job.status,
         category: params.job.category,
-        address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
+        address_reveal_policy: params.job.address_reveal_policy ?? "after_accept",
         public_location_label: params.job.public_location_label ?? null,
         public_lat: params.job.public_lat ?? null,
         public_lng: params.job.public_lng ?? null,
@@ -387,7 +387,7 @@ export async function createJob(params: {
     p_description: params.job.description,
     p_wage_hourly: params.job.wage_hourly,
     p_category: params.job.category,
-    p_address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
+    p_address_reveal_policy: params.job.address_reveal_policy ?? "after_accept",
     p_public_location_label: params.job.public_location_label ?? "",
     p_public_lat: params.job.public_lat ?? null,
     p_public_lng: params.job.public_lng ?? null,
@@ -419,7 +419,7 @@ export async function createJob(params: {
       wage_hourly: params.job.wage_hourly,
       status: params.job.status,
       category: params.job.category,
-      address_reveal_policy: params.job.address_reveal_policy ?? "on_accept",
+      address_reveal_policy: params.job.address_reveal_policy ?? "after_accept",
       public_location_label: params.job.public_location_label ?? "",
       public_lat: params.job.public_lat ?? null,
       public_lng: params.job.public_lng ?? null,
@@ -481,7 +481,7 @@ export async function fetchJobApplications(jobId: string, _userId: string): Prom
   if (applicantIds.length > 0) {
     const { data: applicants } = await supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, avatar_url")
       .in("id", applicantIds);
 
     if (applicants) {

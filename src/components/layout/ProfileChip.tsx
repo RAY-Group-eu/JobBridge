@@ -2,7 +2,8 @@
 
 import { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { User, Building2, ChevronDown, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronDown, User, ShieldCheck, ShieldAlert, Sparkles, Building2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabaseBrowser } from "@/lib/supabaseClient";
@@ -83,7 +84,7 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
 
     const isVerified =
         profile.account_type === "job_provider"
-            ? profile.provider_verification_status === "verified" || Boolean(profile.provider_verified_at)
+            ? profile.provider_verification_status === "verified"
             : (profile.guardian_status === "linked" && (profile as any).has_active_guardian !== false);
     // We rely on the parent to inject 'has_active_guardian' if available, otherwise fallback to status
     // But wait, if I can't inject it easily without changing types everywhere...
@@ -110,14 +111,21 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                     isOpen && "border-white/25 bg-slate-900/55"
                 )}
             >
-                <div className="relative h-10 w-10 shrink-0 rounded-full border border-white/10 bg-white/5 p-[1px]">
-                    <div className="flex h-full w-full items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 transition-all group-hover:bg-indigo-500/25">
-                        <span className="text-sm font-semibold">
-                            {profile.full_name?.charAt(0).toUpperCase() || "?"}
-                        </span>
+                <div className="relative h-10 w-10 shrink-0">
+                    <div className="h-full w-full rounded-full border border-white/10 bg-white/5 p-[1px] overflow-hidden">
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 transition-all group-hover:bg-indigo-500/25">
+                            {profile.avatar_url ? (
+                                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover rounded-full" />
+                            ) : (
+                                <span className="text-sm font-semibold">
+                                    {profile.full_name?.charAt(0).toUpperCase() || "?"}
+                                </span>
+                            )}
+                        </div>
                     </div>
+                    {/* Status Dot */}
                     <div className={cn(
-                        "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-slate-950",
+                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-950 z-10",
                         isVerified ? "bg-emerald-500" : "bg-amber-500"
                     )} />
                 </div>
@@ -167,13 +175,24 @@ export function ProfileChip({ profile, className, isDemo }: ProfileChipProps) {
                                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Account</p>
                                     {isStaff && <span className="rounded border border-indigo-500/30 bg-indigo-500/20 px-1.5 py-0.5 text-[10px] text-indigo-300">STAFF</span>}
                                 </div>
-                                <p className="break-all text-sm text-slate-300">
-                                    {accountEmail === undefined ? "E-Mail wird geladen..." : (accountEmail || "Keine E-Mail hinterlegt")}
-                                </p>
+                                <div className="text-left mt-2">
+                                    <p className="text-sm font-semibold text-slate-100">{profile?.full_name || "Gast"}</p>
+                                    <p className="text-xs text-slate-400 truncate max-w-[16rem]">
+                                        {accountEmail === undefined ? "E-Mail wird geladen..." : (accountEmail || "Keine E-Mail hinterlegt")}
+                                    </p>
+                                </div>
                             </div>
 
-                            <Link href="/app-home/profile" onClick={() => setIsOpen(false)} className="rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white">
-                                Profil anzeigen
+                            <Link
+                                href="/app-home/profile"
+                                onClick={() => setIsOpen(false)}
+                                className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                            >
+                                <User size={16} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                                <span>Profil bearbeiten</span>
+                                {profile.account_type === "job_provider" && profile.provider_verification_status !== 'verified' && (
+                                    <span className="ml-auto h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                                )}
                             </Link>
 
                             {isStaff && (

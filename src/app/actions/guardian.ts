@@ -30,12 +30,7 @@ export async function createGuardianInvitation() {
         .single();
 
     if (existing) {
-        // Only set to pending if NOT already verifying/linked to someone else
-        // Actually, if they are already linked, we don't want to revert to pending globally.
-        // We just return the token.
-        if (!isAlreadyLinked) {
-            await supabase.from("profiles").update({ guardian_status: "pending" }).eq("id", user.id);
-        }
+        // Return existing active token
         return { success: true, token: existing.token, expires_at: existing.expires_at };
     }
 
@@ -55,12 +50,44 @@ export async function createGuardianInvitation() {
         return { error: "Einladungslink konnte nicht erstellt werden." };
     }
 
-    // Update profile status ONLY if not already linked
+    // Update profile status ONLY if not already linked (to avoid downgrading status)
     if (!isAlreadyLinked) {
         await supabase.from("profiles").update({ guardian_status: "pending" }).eq("id", user.id);
     }
 
     return { success: true, token, expires_at: expiresAt };
+}
+
+export async function getGuardians() {
+    const supabase = await supabaseServer();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Nicht authentifiziert" };
+
+    // Fetch redeemed invitations to find guardians
+    const { data: guardians } = await supabase
+        .from("guardian_invitations")
+        .select(`
+            redeemed_by,
+            updated_at,
+            guardian_profile:redeemed_by (
+                full_name,
+                email
+            )
+        `)
+        .eq("child_id", user.id)
+        .eq("status", "redeemed");
+
+    if (!guardians) return { guardians: [] };
+
+    return {
+        guardians: guardians.map((g: any) => ({
+            id: g.redeemed_by,
+            full_name: g.guardian_profile?.full_name || "Unbekannt",
+            email: g.guardian_profile?.email || "",
+            linked_at: g.updated_at
+        }))
+    };
 }
 
 export async function getActiveGuardianInvitation() {

@@ -5,7 +5,7 @@ export type AccountType = "job_seeker" | "job_provider";
 export type ProviderKind = "private" | "company";
 export type GuardianStatus = "none" | "pending" | "linked";
 export type ProviderVerificationStatus = "none" | "pending" | "verified" | "rejected";
-export type JobStatus = "draft" | "open" | "closed";
+export type JobStatus = "draft" | "open" | "closed" | "reviewing" | "reserved" | "filled";
 export type ApplicationStatus = "submitted" | "withdrawn" | "accepted" | "rejected";
 export type SystemRoleType = "admin" | "moderator" | "analyst";
 
@@ -14,6 +14,9 @@ export type Profile = {
   full_name: string | null;
   birthdate: string | null;
   city: string | null;
+  country?: string; // Added to match DB
+  user_type?: string | null; // Added to match DB
+  avatar_url?: string | null; // Added to match DB
   bio: string | null;
   interests: string | null;
   skills: string | null;
@@ -35,6 +38,9 @@ export type Profile = {
   company_name?: string | null;
   company_contact_email?: string | null;
   company_message?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  zip?: string | null;
 };
 
 // ... (skipping types not modified, but replace_file_content needs contiguous block)
@@ -121,6 +127,9 @@ export type Database = {
           company_name?: string | null;
           company_contact_email?: string | null;
           company_message?: string | null;
+          street?: string | null;
+          house_number?: string | null;
+          zip?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
