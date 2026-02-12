@@ -104,9 +104,10 @@ export function CreateJobForm({ defaultLocation }: { defaultLocation?: DefaultLo
                     lng: location.lng,
                     city: location.city,
                     zip: location.postal_code,
-                    label: location.public_label
+                    label: location.public_label,
+                    isDefault: !useCustomLocation // Persist specific location flag if needed inside location object
                 } : undefined,
-                // We could store useCustomLocation too if needed
+                isDefaultLocation: !useCustomLocation // Persist top-level preference
             });
         }, 800);
         return () => clearTimeout(timer);

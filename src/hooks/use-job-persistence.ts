@@ -18,6 +18,7 @@ export type JobDraftData = {
         isDefault?: boolean;
     };
     category?: string;
+    isDefaultLocation?: boolean;
 };
 
 export function useJobFormPersistence() {

@@ -11,6 +11,7 @@ export type LocationDetails = {
   lat: number;
   lng: number;
   public_label: string;
+  state?: string;
 };
 
 interface LocationAutocompleteProps {
@@ -100,6 +101,7 @@ export function LocationAutocomplete({ onSelect, defaultValue = "", className, p
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lon),
       public_label: label,
+      state: addr.state,
       // Pass raw house number for parent to use
       ...({ house_number: houseNumber } as any)
     };

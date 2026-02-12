@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LocationAutocomplete, type OpenPlzLocality } from "@/components/ui/LocationAutocomplete";
+import { LocationAutocomplete, type LocationDetails } from "@/components/ui/LocationAutocomplete";
 import { motion } from "framer-motion";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ interface LocationStepProps {
 }
 
 export function LocationStep({ onComplete }: LocationStepProps) {
-    const [selectedLocality, setSelectedLocality] = useState<OpenPlzLocality | null>(null);
+    const [selectedLocality, setSelectedLocality] = useState<LocationDetails | null>(null);
     const [isChecking, setIsChecking] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -27,9 +27,9 @@ export function LocationStep({ onComplete }: LocationStepProps) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    city: selectedLocality.name,
-                    postal_code: selectedLocality.postalcode,
-                    federal_state: selectedLocality.federalState.name,
+                    city: selectedLocality.city,
+                    postal_code: selectedLocality.postal_code,
+                    federal_state: selectedLocality.state || "",
                     country: "DE",
                 }),
             });
@@ -43,21 +43,21 @@ export function LocationStep({ onComplete }: LocationStepProps) {
             if (data.status === "live") {
                 // Region is live
                 onComplete({
-                    city: selectedLocality.name,
-                    postal_code: selectedLocality.postalcode,
-                    federal_state: selectedLocality.federalState.name,
+                    city: selectedLocality.city,
+                    postal_code: selectedLocality.postal_code,
+                    federal_state: selectedLocality.state || "",
                     country: "DE",
                     region_live_id: data.region?.id
                 });
             } else {
                 // Not live or unknown -> Waitlist
                 const params = new URLSearchParams({
-                    city: selectedLocality.name,
-                    state: selectedLocality.federalState.name,
+                    city: selectedLocality.city,
+                    state: selectedLocality.state || "",
                     country: "DE",
                 });
-                if (selectedLocality.postalcode) {
-                    params.append("zip", selectedLocality.postalcode);
+                if (selectedLocality.postal_code) {
+                    params.append("zip", selectedLocality.postal_code);
                 }
 
                 // Use window.location to ensure full redirect, or router.push
@@ -80,7 +80,6 @@ export function LocationStep({ onComplete }: LocationStepProps) {
             </div>
 
             <LocationAutocomplete
-                selectedLocality={selectedLocality}
                 onSelect={(loc) => {
                     setSelectedLocality(loc);
                     setError(null);
