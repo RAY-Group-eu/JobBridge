@@ -109,16 +109,16 @@ export function UserProfileModal({ isOpen, onClose, profile, stats = { jobsCompl
                                                 )}
                                             </div>
 
-                                            {/* Staff Badge */}
+                                            {/* Staff Badge (Premium Team Pill) v17 - Integrated Overlap */}
                                             {isStaff && (
-                                                <div className="absolute -bottom-2 -right-2 z-20 group/badge" title="Offizieller JobBridge Mitarbeiter">
-                                                    <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#15151A] border border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.3)]">
-                                                        <div className="absolute inset-0 bg-indigo-500/20 rounded-full animate-pulse" />
-                                                        <ShieldCheck size={16} className="text-indigo-400 relative z-10" />
-
-                                                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 rounded-lg bg-[#0F0F12] border border-white/10 text-[10px] font-bold text-indigo-200 whitespace-nowrap opacity-0 group-hover/badge:opacity-100 transition-opacity pointer-events-none shadow-xl">
-                                                            JobBridge Team
-                                                        </div>
+                                                <div
+                                                    className="absolute -bottom-1.5 -right-4 z-20 animate-in fade-in zoom-in duration-500 delay-200"
+                                                    title="Offizieller JobBridge Mitarbeiter"
+                                                >
+                                                    <div className="relative px-2.5 py-0.5 bg-[#0A0A0C]/95 backdrop-blur-xl border border-indigo-500/40 rounded-full shadow-[0_2px_15px_-3px_rgba(79,70,229,0.6)] flex items-center gap-1.5 transform scale-90 md:scale-100">
+                                                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-pulse-slow" />
+                                                        <ShieldCheck size={11} className="text-indigo-400 relative z-10" />
+                                                        <span className="text-[9px] font-black text-indigo-100 tracking-wider uppercase relative z-10">TEAM</span>
                                                     </div>
                                                 </div>
                                             )}

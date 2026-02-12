@@ -11,6 +11,7 @@ import { ProviderVerificationModal } from "@/components/profile/ProviderVerifica
 import { GuardianBanner } from "./GuardianBanner";
 import { GuardianConsentModal } from "@/components/GuardianConsentModal";
 import { getGuardians, getWards } from "@/app/actions/guardian";
+import { GuardianManageModal } from "@/components/profile/GuardianManageModal";
 
 // Add type for Guardian display
 type GuardianDisplay = {

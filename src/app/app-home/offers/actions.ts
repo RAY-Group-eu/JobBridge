@@ -39,9 +39,12 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
 
     // Get User Profile for Market ID (and Address Fallback v13)
     // We cast to any to get address fields that might be missing in strict types but exist in DB
-    const { data: profile } = await supabase.from("profiles").select("market_id, account_type, street, house_number, zip, city, postal_code").eq("id", user.id).single();
+    const { data: profile } = await (supabase.from("profiles") as any)
+        .select("market_id, account_type, street, house_number, zip, city, postal_code")
+        .eq("id", user.id)
+        .single();
 
-    let marketId = profile?.market_id;
+    let marketId = (profile as any)?.market_id;
 
     if (!marketId) {
         // Fallback: Fetch "Rheinbach" market from regions_live (v13 fix)
