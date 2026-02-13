@@ -33,7 +33,29 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     }
 
     if (error || !data) {
-        notFound();
+        return (
+            <div className="container mx-auto py-20 px-4 text-center">
+                <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-2xl inline-block max-w-lg w-full backdrop-blur-sm">
+                    <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <FileText size={32} />
+                    </div>
+                    <h1 className="text-2xl font-bold text-red-500 mb-2">Job nicht gefunden (404)</h1>
+                    <p className="text-slate-400 mb-8">Dieser Job existiert nicht oder du hast keine Berechtigung.</p>
+
+                    <div className="text-left bg-black/50 p-4 rounded-xl font-mono text-xs text-slate-500 mb-8 overflow-x-auto border border-white/5">
+                        <p><span className="text-slate-400">ID:</span> {jobId}</p>
+                        <p><span className="text-slate-400">Mode:</span> {isDemo ? 'Demo' : 'Live'}</p>
+                        <p><span className="text-slate-400">Role:</span> {viewRole}</p>
+                        {error && <p className="text-red-400 mt-2">Error: {error}</p>}
+                    </div>
+
+                    <Link href="/app-home/offers" className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-colors border border-white/10">
+                        <ArrowLeft size={16} />
+                        Zurück zur Übersicht
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
     const job = data as unknown as JobRow;
