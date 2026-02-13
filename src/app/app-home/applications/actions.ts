@@ -80,9 +80,43 @@ export async function rejectApplication(applicationId: string, reason: string) {
         return { error: "Fehler beim Ablehnen." };
     }
 
-    // Re-open job if it was reserved for this applicant
-    if (wasActive && app.job.status === 'reserved') {
-        await supabase.from("jobs").update({ status: 'open' }).eq("id", app.job_id);
+    // Check for Waitlist
+    // If the application was active (negotiating/reserved), we check waitlist before re-opening
+    if (wasActive) {
+        const { data: waitlisted } = await supabase
+            .from("applications")
+            .select("id, user_id")
+            .eq("job_id", app.job_id)
+            .eq("status", "waitlisted")
+            .order("created_at", { ascending: true }) // First come, first served
+            .limit(1)
+            .maybeSingle();
+
+        if (waitlisted) {
+            // Promote to NEGOTIATING (Job stays RESERVED or becomes RESERVED)
+            await supabase
+                .from("applications")
+                .update({ status: "negotiating" })
+                .eq("id", waitlisted.id);
+
+            // Notify Candidate
+            await (supabase as any).from("notifications").insert({
+                user_id: waitlisted.user_id,
+                type: "application_update",
+                title: "Gute Neuigkeiten!",
+                body: `Ein Platz wurde frei! Deine Bewerbung für den Job wurde aktiviert.`,
+                data: { route: "/app-home/activities" }
+            });
+
+            if (app.job?.status !== 'reserved') {
+                await supabase.from("jobs").update({ status: 'reserved' }).eq("id", app.job_id);
+            }
+        } else {
+            // NO Waitlist -> Check if job was reserved/filled -> Set to OPEN
+            if (['reserved', 'filled'].includes(app.job?.status)) {
+                await supabase.from("jobs").update({ status: 'open' }).eq("id", app.job_id);
+            }
+        }
     }
 
     // Notify Seeker

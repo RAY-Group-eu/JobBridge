@@ -21,7 +21,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         redirect("/app-home/jobs");
     }
 
-    const { data, error } = await getJobByIdService(jobId, isDemo);
+    let { data, error } = await getJobByIdService(jobId, isDemo);
+
+    // Fallback: If not found in current mode, try the other mode (Provider might have clicked a link from a different context)
+    if (error || !data) {
+        const { data: fallbackData, error: fallbackError } = await getJobByIdService(jobId, !isDemo);
+        if (fallbackData && !fallbackError) {
+            data = fallbackData;
+            error = undefined;
+        }
+    }
 
     if (error || !data) {
         notFound();

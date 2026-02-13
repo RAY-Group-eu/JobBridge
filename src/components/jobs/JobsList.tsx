@@ -176,6 +176,7 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
                         isWhiteTitle={true}
                         isDemo={isDemo}
                         canApply={canApply}
+                        hideStatusLabel={true}
                         onSelect={handleJobSelect}
                     />
                 </div>
@@ -190,6 +191,7 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
                         emptyMsg="Aktuell sind keine Jobs für die Warteliste verfügbar."
                         isDemo={isDemo}
                         canApply={canApply}
+                        hideStatusLabel={true}
                         onSelect={handleJobSelect}
                     />
                 </div>
@@ -204,6 +206,7 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
                         emptyMsg="Noch keine Bewerbungen versendet."
                         isDemo={isDemo}
                         canApply={canApply}
+                        hideStatusLabel={true}
                         onSelect={handleJobSelect}
                     />
                 </div>

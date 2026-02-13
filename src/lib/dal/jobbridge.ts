@@ -122,7 +122,7 @@ export type FetchJobsParams = {
   view: EffectiveViewSnapshot;
   userId: string;
   marketId?: string | null;
-  status?: Database["public"]["Enums"]["job_status"];
+  status?: Database["public"]["Enums"]["job_status"] | Database["public"]["Enums"]["job_status"][];
   limit?: number;
   offset?: number;
 };
@@ -231,7 +231,13 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
   // ── DEMO ──────────────────────────────────────────────────────────
   if (params.view.source === "demo") {
     let q = supabase.from("demo_jobs").select("*");
-    if (params.mode === "feed") q = q.eq("status", status);
+    if (params.mode === "feed") {
+      if (Array.isArray(status)) {
+        q = q.in("status", status);
+      } else {
+        q = q.eq("status", status);
+      }
+    }
     if (params.mode === "my_jobs") q = q.eq("posted_by", params.userId);
     q = q.order("created_at", { ascending: false });
     q = applyRange(q) as typeof q;
@@ -247,7 +253,13 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
   const appliedJobIds = await fetchAppliedJobIds(params.userId);
 
   let q = supabase.from("jobs").select("*");
-  if (params.mode === "feed") q = q.eq("status", status);
+  if (params.mode === "feed") {
+    if (Array.isArray(status)) {
+      q = q.in("status", status);
+    } else {
+      q = q.eq("status", status);
+    }
+  }
   if (params.mode === "my_jobs") q = q.eq("posted_by", params.userId);
   q = q.order("created_at", { ascending: false });
   q = applyRange(q) as typeof q;

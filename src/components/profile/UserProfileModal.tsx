@@ -109,19 +109,7 @@ export function UserProfileModal({ isOpen, onClose, profile, stats = { jobsCompl
                                                 )}
                                             </div>
 
-                                            {/* Staff Badge (Premium Team Pill) v17 - Integrated Overlap */}
-                                            {isStaff && (
-                                                <div
-                                                    className="absolute -bottom-1.5 -right-4 z-20 animate-in fade-in zoom-in duration-500 delay-200"
-                                                    title="Offizieller JobBridge Mitarbeiter"
-                                                >
-                                                    <div className="relative px-2.5 py-0.5 bg-[#0A0A0C]/95 backdrop-blur-xl border border-indigo-500/40 rounded-full shadow-[0_2px_15px_-3px_rgba(79,70,229,0.6)] flex items-center gap-1.5 transform scale-90 md:scale-100">
-                                                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-pulse-slow" />
-                                                        <ShieldCheck size={11} className="text-indigo-400 relative z-10" />
-                                                        <span className="text-[9px] font-black text-indigo-100 tracking-wider uppercase relative z-10">TEAM</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* Staff Badge moved to Header in v21 */}
 
                                             {/* Verified Provider Badge */}
                                             {!isStaff && profile.provider_verification_status === 'verified' && (
@@ -136,8 +124,8 @@ export function UserProfileModal({ isOpen, onClose, profile, stats = { jobsCompl
                                                 {profile.full_name || "Unbekannt"}
                                             </h2>
 
-                                            {/* Role Badge */}
-                                            <div className="mb-2">
+                                            {/* Role Badge & Team Badge */}
+                                            <div className="mb-2 flex flex-wrap items-center gap-2">
                                                 {isJobProvider ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase">
                                                         {profile.company_name ? "JOBANBIETER (ORG)" : "JOBANBIETER (PRIVAT)"}
@@ -146,6 +134,18 @@ export function UserProfileModal({ isOpen, onClose, profile, stats = { jobsCompl
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300 border border-white/10">
                                                         JOBSUCHEND
                                                     </span>
+                                                )}
+
+                                                {/* Staff Badge - New Header Position (v21) */}
+                                                {isStaff && (
+                                                    <div
+                                                        className="relative px-3 py-0.5 bg-[#0A0A0C] border border-indigo-500/50 rounded-full shadow-[0_0_15px_-3px_rgba(79,70,229,0.4)] flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 duration-500"
+                                                        title="Offizieller JobBridge Mitarbeiter"
+                                                    >
+                                                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-pulse-slow" />
+                                                        <ShieldCheck size={12} className="text-indigo-400 relative z-10" />
+                                                        <span className="text-[9px] font-black text-indigo-100 tracking-widest uppercase relative z-10 whitespace-nowrap">JOBBRIDGE TEAM</span>
+                                                    </div>
                                                 )}
                                             </div>
 

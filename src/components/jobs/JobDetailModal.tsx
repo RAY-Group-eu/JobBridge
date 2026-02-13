@@ -11,6 +11,9 @@ import { JobApplicationModal } from "@/components/jobs/JobApplicationModal";
 import { WithdrawButton } from "@/components/jobs/WithdrawButton";
 import dynamic from "next/dynamic";
 import { JobsListItem } from "@/lib/types/jobbridge";
+import { UserProfileModal } from "@/components/profile/UserProfileModal";
+import { createSupabaseClient } from "@/lib/supabaseClient";
+import type { Profile } from "@/lib/types";
 
 const LeafletMap = dynamic(() => import("@/components/ui/LeafletMap"), {
     ssr: false,
@@ -35,18 +38,49 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
     const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
     const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
 
+    // Profile Preview State
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
+    const [isSelectedProfileStaff, setIsSelectedProfileStaff] = useState(false);
+
+    const handleProfileClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!job?.posted_by) return;
+
+        setIsProfileLoading(true);
+        try {
+            const supabase = createSupabaseClient();
+
+            // Parallel fetch for profile and staff status
+            const [profileResponse, rolesResponse] = await Promise.all([
+                supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", job.posted_by)
+                    .single(),
+                supabase
+                    .from("user_system_roles")
+                    .select("*", { count: 'exact', head: true })
+                    .eq("user_id", job.posted_by)
+            ]);
+
+            if (profileResponse.data) {
+                // Cast to Profile to handle potential null vs undefined mismatches for optional fields like theme_preference
+                setSelectedProfile(profileResponse.data as unknown as Profile);
+                setIsSelectedProfileStaff((rolesResponse.count || 0) > 0);
+                setIsProfileModalOpen(true);
+            }
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+        } finally {
+            setIsProfileLoading(false);
+        }
+    };
+
     // Failsafe: Ensure overflow is cleaned up if Headless UI gets stuck
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-        return () => {
-            // Small timeout to allow Headless UI to finish if it's behaving, otherwise force it.
-            setTimeout(() => {
-                document.documentElement.style.removeProperty('overflow');
-                document.body.style.removeProperty('overflow');
-                document.body.style.removeProperty('padding-right');
-            }, 50);
-        };
-    }, []);
+    //... (existing effects)
 
     // Delayed Unmount for Map to prevent "Close Freeze"
     const [shouldRenderMap, setShouldRenderMap] = useState(false);
@@ -64,14 +98,13 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
     }, [isOpen]);
 
     // If no job is selected and we are not open, don't render.
-    // However, if we are open (animating out), we might still have job=null if handled poorly, 
-    // so we rely on parent to keep job populated until onClosed.
     if (!job) return null;
 
     return (
         <>
             <Transition appear show={isOpen} as={Fragment} afterLeave={onClosed}>
                 <Dialog as="div" className="relative z-50" onClose={onClose}>
+                    {/* ... existing dialog content ... */}
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -155,15 +188,23 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
                                                 {job.creator && (
                                                     <>
                                                         <div className="w-px h-8 bg-white/10 hidden sm:block" />
-                                                        <a href={`/app-home/profile/view/${job.posted_by}`} className="col-span-2 sm:col-span-1 flex items-center justify-center sm:justify-start gap-2 group hover:bg-white/5 p-1 rounded-lg transition-colors mt-2 sm:mt-0">
-                                                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all">
-                                                                {(job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()}
+                                                        <button
+                                                            onClick={handleProfileClick}
+                                                            disabled={isProfileLoading}
+                                                            className="col-span-2 sm:col-span-1 flex items-center justify-center sm:justify-start gap-2 group hover:bg-white/5 p-1 rounded-lg transition-colors mt-2 sm:mt-0 text-left disabled:opacity-50"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all overflow-hidden">
+                                                                {job.creator.avatar_url ? (
+                                                                    <img src={job.creator.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    (job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()
+                                                                )}
                                                             </div>
                                                             <div className="flex flex-col items-start">
                                                                 <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Erstellt von</span>
                                                                 <span className="text-sm text-white group-hover:text-indigo-300 transition-colors">{job.creator.company_name || job.creator.full_name || "Unbekannt"}</span>
                                                             </div>
-                                                        </a>
+                                                        </button>
                                                     </>
                                                 )}
                                                 {job.distance_km != null && (
@@ -332,6 +373,13 @@ export const JobDetailModal = memo(function JobDetailModal({ job, isOpen, onClos
             <VerificationRequiredModal
                 isOpen={isVerificationModalOpen}
                 onClose={() => setIsVerificationModalOpen(false)}
+            />
+
+            <UserProfileModal
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+                profile={selectedProfile}
+                isStaff={isSelectedProfileStaff}
             />
         </>
     );

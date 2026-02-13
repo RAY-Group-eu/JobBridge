@@ -85,9 +85,22 @@ export async function applyToJob(formData: FormData | string) {
     let initialStatus: Database["public"]["Enums"]["application_status"] = "waitlisted";
     let shouldReserveJob = false;
 
-    if ((job as any)?.status === 'open') {
+    // Logic:
+    // 1. If Job is OPEN -> First applicant gets "negotiating" and Job becomes "reserved".
+    // 2. If Job is RESERVED -> Applicant gets "waitlisted".
+    // 3. If Job is CLOSED/FILLED/etc -> Blocked (handled by UI generally, but safety check below).
+
+    // Force cast to any to handle potential type mismatch with DB types if not generated perfectly
+    const currentJobStatus = (job as any)?.status;
+
+    if (currentJobStatus === 'open') {
         initialStatus = "negotiating";
         shouldReserveJob = true;
+    } else if (currentJobStatus === 'reserved') {
+        initialStatus = "waitlisted";
+    } else {
+        // If closed, filled, reviewing, draft -> Block
+        return { error: "Dieser Job nimmt derzeit keine Bewerbungen mehr an." };
     }
 
     // Insert Application

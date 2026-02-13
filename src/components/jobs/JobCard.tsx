@@ -82,6 +82,13 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                 </span>
             );
         }
+        if (job.status === "reserved") {
+            return (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 border border-amber-400/30 px-1.5 py-0.5 rounded bg-amber-400/10 ml-2">
+                    Warteliste verfügbar
+                </span>
+            );
+        }
         return null;
     };
 
@@ -138,7 +145,6 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                                         Demo
                                     </span>
                                 )}
-                                {getStatusBadge()}
                             </p>
                         </div>
                     </div>

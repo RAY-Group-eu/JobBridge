@@ -50,7 +50,7 @@ export default async function JobsPage() {
             view,
             userId: profile.id,
             marketId: profile.market_id,
-            status: "open",
+            status: ["open", "reserved"],
             limit: 50,
             offset: 0,
         }),
@@ -60,24 +60,36 @@ export default async function JobsPage() {
     const rawActiveJobs: JobsListItem[] = jobsRes.ok ? jobsRes.data : [];
     const allApps = appsRes.ok ? appsRes.data : [];
 
+    // Waitlisted Jobs: Jobs where I am applicant and status is 'waitlisted'
     const waitlistedJobs = allApps
         .filter(a => a.status === 'waitlisted')
-        .map(a => a.job);
+        .map(a => a.job)
+        .filter(j => !!j && (j.status === 'reserved' || j.status === 'open')); // Only relevant if job exists and is open/reserved
 
+    // Applied Jobs: 'submitted', 'pending', 'negotiating', 'accepted' (active processes)
+    // EXCLUDING waitlisted ones (handled above)
     const appliedJobs = allApps
-        .filter(a => ['submitted', 'pending', 'negotiating', 'accepted', 'rejected'].includes(a.status))
-        .map(a => a.job);
+        .filter(a => ['submitted', 'pending', 'negotiating', 'accepted'].includes(a.status))
+        .map(a => a.job)
+        .filter(j => !!j); // Check existence
 
-    // Filter activeJobs to exclude those that are already applied
+    // Rejected/Withdrawn/Archived Applications could be interesting but usually not "Active"
+    // For now, we focus on Active Apps.
+
     const appliedJobIds = new Set(appliedJobs.map(j => j.id));
-    // Also exclude waitlisted jobs if they appear in active (though status should handle it, play safe)
     const waitlistedJobIds = new Set(waitlistedJobs.map(j => j.id));
 
-    const activeJobs = rawActiveJobs.filter(job => !appliedJobIds.has(job.id) && !waitlistedJobIds.has(job.id));
+    // Active Feed: Open jobs AND Reserved jobs (for Waitlist opportunities)
+    // EXCLUDING any job I already have an application for (waitlist or active)
+    const activeJobs = rawActiveJobs.filter(job =>
+        !appliedJobIds.has(job.id) &&
+        !waitlistedJobIds.has(job.id) &&
+        (job.status === 'open' || job.status === 'reserved')
+    );
 
     return (
         <div className="container mx-auto py-2 px-4 md:px-6">
-            <div className="mx-auto max-w-6xl space-y-4">
+            <div className="mx-auto max-w-6xl space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
                         Finde deinen Job
@@ -91,13 +103,6 @@ export default async function JobsPage() {
                         <p className="mt-2 text-xs text-red-200/80 font-mono break-words">
                             {jobsRes.error.code ? `${jobsRes.error.code}: ` : ""}{jobsRes.error.message}
                         </p>
-                    </div>
-                ) : (activeJobs.length === 0 && waitlistedJobs.length === 0 && appliedJobs.length === 0) ? (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-sm">
-                        <p className="text-slate-300">Aktuell sind keine neuen Jobs verfügbar.</p>
-                        <div className="mt-4 text-[10px] text-slate-600 font-mono">
-                            Region: {profile.market_id?.slice(0, 8) ?? "Global"}
-                        </div>
                     </div>
                 ) : (
                     <JobsList

@@ -13,6 +13,7 @@ interface SectionProps {
     isWhiteTitle?: boolean;
     isDemo: boolean;
     canApply: boolean;
+    hideStatusLabel?: boolean;
     onSelect: (job: JobsListItem) => void;
 }
 
@@ -26,6 +27,7 @@ export const JobsListSection = memo(function JobsListSection({
     isWhiteTitle,
     isDemo,
     canApply,
+    hideStatusLabel,
     onSelect
 }: SectionProps) {
     return (
@@ -53,7 +55,7 @@ export const JobsListSection = memo(function JobsListSection({
                             isDemo={isDemo}
                             isApplied={title === 'Bereits Beworben'}
                             isLocked={!canApply}
-                            hideStatusLabel={title === 'Bereits Beworben'}
+                            hideStatusLabel={hideStatusLabel}
                             onSelect={onSelect}
                         />
                     ))

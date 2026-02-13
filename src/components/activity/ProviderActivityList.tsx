@@ -90,9 +90,9 @@ export function ProviderActivityList({ applications, userId }: { applications: P
                             </div>
 
                             <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${app.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                    app.status === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                        app.status === 'negotiating' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                            'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                app.status === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                    app.status === 'negotiating' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                        'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                                 }`}>
                                 {app.status === 'submitted' ? 'NEU' :
                                     app.status === 'negotiating' ? 'IN VERHANDLUNG' :
@@ -180,6 +180,12 @@ export function ProviderActivityList({ applications, userId }: { applications: P
                     theme_preference: (viewProfile.theme_preference as "light" | "dark" | "system" | undefined) ?? "system"
                 } : null}
                 stats={{ jobsCompleted: 0, rating: 5.0 }}
+                isStaff={(() => {
+                    if (!viewProfile) return false;
+                    // Check for nested roles in the profile object
+                    const roles = (viewProfile as any).user_system_roles?.map((r: any) => r.role?.name) || [];
+                    return roles.includes('admin') || roles.includes('moderator') || roles.includes('analyst');
+                })()}
             />
         </>
     );
