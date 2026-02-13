@@ -273,7 +273,7 @@ function FlyerView() {
             <div className="relative z-10 h-full w-full flex items-center justify-center">
                 <div className="max-w-[70vh] max-h-[70vh] shadow-2xl shadow-black rounded-xl overflow-hidden border border-white/10 transition-transform duration-500 hover:scale-[1.02]">
                     <img
-                        src="/assets/jury/flyer_new.png"
+                        src="/assets/jury/flyer_v2.png"
                         alt="JobBridge Flyer"
                         className="h-full w-auto object-contain"
                     />
