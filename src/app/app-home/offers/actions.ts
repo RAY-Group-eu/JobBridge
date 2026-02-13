@@ -39,13 +39,54 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
 
     // Get User Profile for Market ID (and Address Fallback v13)
     // We cast to any to get address fields that might be missing in strict types but exist in DB
-    const { data: profile } = await (supabase.from("profiles") as any)
+    // We cast to any to get address fields that might be missing in strict types but exist in DB
+    let { data: profile } = await (supabase.from("profiles") as any)
         .select("market_id, account_type, street, house_number, zip, city, postal_code")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
     if (!profile) {
-        return { status: "error", error: { message: "Benutzerprofil nicht gefunden." } };
+        // Auto-fix: Create profile if missing (Data integrity fallback)
+        console.warn(`[createJob] Profile missing for user ${user.id}. Attempting to create...`);
+
+        const { error: insertError } = await supabase.from("profiles").upsert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || "JobBridge User",
+            account_type: "job_provider", // Defaulting to provider since they are creating a job
+            country: "DE",
+            provider_verification_status: "none",
+            guardian_status: "none",
+        } as any, { onConflict: 'id', ignoreDuplicates: true });
+
+        if (insertError) {
+            console.error("[createJob] Failed to auto-create profile:", insertError);
+            return {
+                status: "error",
+                error: {
+                    message: `Benutzerprofil konnte nicht erstellt werden: ${insertError.message} (${insertError.details || insertError.code})`
+                }
+            };
+        }
+
+        // Retry fetch
+        const { data: retryProfile } = await (supabase.from("profiles") as any)
+            .select("market_id, account_type, street, house_number, zip, city, postal_code")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (!retryProfile) {
+            console.warn("[createJob] Profile read failed after creation (likely RLS). Using in-memory fallback.");
+            // Construct minimal profile to allow proceeding
+            profile = {
+                id: user.id,
+                account_type: "job_provider",
+                market_id: null,
+                // Address fields undefined, will trigger manual address entry requirement
+            };
+        } else {
+            profile = retryProfile;
+        }
     }
 
     let marketId = (profile as any)?.market_id;
