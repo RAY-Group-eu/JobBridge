@@ -44,6 +44,10 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
         .eq("id", user.id)
         .single();
 
+    if (!profile) {
+        return { status: "error", error: { message: "Benutzerprofil nicht gefunden." } };
+    }
+
     let marketId = (profile as any)?.market_id;
 
     if (!marketId) {
