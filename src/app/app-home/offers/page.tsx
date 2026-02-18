@@ -1,11 +1,13 @@
 import { requireCompleteProfile } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { ProviderTabs } from "./components/ProviderTabs";
 import { MyJobsView } from "./components/MyJobsView";
 import { RegionView } from "./components/RegionView";
 import { fetchJobs, getEffectiveView } from "@/lib/dal/jobbridge";
 import type { JobsListItem } from "@/lib/types/jobbridge";
+import { Settings } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export default async function OffersPage({
     searchParams,
@@ -37,7 +39,7 @@ export default async function OffersPage({
 
     // Determine View
     const params = await searchParams;
-    const tab = typeof params.view === 'string' ? params.view : 'jobs';
+    const isRegionView = params.view === 'region';
 
     // Data Fetching
     let jobs: JobsListItem[] = [];
@@ -45,7 +47,7 @@ export default async function OffersPage({
     const regionId = profile.market_id;
     let jobsError: { code?: string; message: string } | null = null;
 
-    if (tab === 'region') {
+    if (isRegionView) {
         const supabase = await supabaseServer();
         if (regionId) {
             // regions_live has `city`, not `display_name`
@@ -70,21 +72,41 @@ export default async function OffersPage({
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6 max-w-6xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-                        Meine Jobs
-                    </h1>
-                    <p className="text-slate-400">Verwalte deine Jobs für {isDemo ? "Demo User" : "Rheinbach"}.</p>
+            {!isRegionView && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                            Meine Jobs
+                        </h1>
+                        <p className="text-slate-400">
+                            Verwalte deine Jobs für {regionName || "Rheinbach"}.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Link href="/app-home/offers/new">
+                            <Button>
+                                Neuer Job
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* Navigation Tabs */}
-            <ProviderTabs />
+            {isRegionView && (
+                <div className="mb-8">
+                    <Link href="/app-home/offers" className="inline-flex items-center gap-2 mb-4 text-slate-400 hover:text-white transition-colors">
+                        <Settings size={16} />
+                        <span>Zurück zu meinen Jobs</span>
+                    </Link>
+                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+                        Region & Sichtbarkeit
+                    </h1>
+                </div>
+            )}
 
             {/* Content Area */}
             <div className="min-h-[400px]">
-                {tab === 'jobs' && (
+                {!isRegionView && (
                     jobsError ? (
                         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-10 text-center">
                             <p className="text-red-200 font-semibold">Jobs konnten nicht geladen werden.</p>
@@ -93,10 +115,12 @@ export default async function OffersPage({
                             </p>
                         </div>
                     ) : (
-                        <MyJobsView jobs={jobs} />
+                        <div className="space-y-8">
+                            <MyJobsView jobs={jobs} />
+                        </div>
                     )
                 )}
-                {tab === 'region' && <RegionView regionName={regionName || "Rheinbach"} />}
+                {isRegionView && <RegionView regionName={regionName || "Rheinbach"} />}
             </div>
         </div>
     );

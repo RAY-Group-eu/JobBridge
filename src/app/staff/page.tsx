@@ -1,1 +1,2 @@
-export { default } from "@/app/admin/page";
+import AdminDashboard from "@/app/admin/page";
+export default AdminDashboard;

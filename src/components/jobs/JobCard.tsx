@@ -196,6 +196,8 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                         </div>
                     )}
                 </div>
+
+
             </div>
         </div>
     );

@@ -20,8 +20,10 @@ export function AppHeader({ profile, isDemo }: { profile: Profile | null; isDemo
                     <CenterNavPill profile={profile} instanceId="mobile" />
                 </div>
 
-                <div className="flex-shrink-0 flex justify-end">
-                    <RightActionGroup profile={profile} isDemo={isDemo} />
+                <div className="flex-shrink-0 flex justify-end gap-2 md:gap-4">
+                    <div className="flex items-center">
+                        <RightActionGroup profile={profile} isDemo={isDemo} />
+                    </div>
                 </div>
             </div>
         </header>

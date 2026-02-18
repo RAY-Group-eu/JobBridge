@@ -132,10 +132,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
                         {/* Actions */}
                         <div className="flex flex-col gap-3 min-w-[200px]">
-                            <button disabled className="w-full py-3 px-4 rounded-xl bg-white/[0.03] hover:bg-white/5 border border-white/10 text-slate-400 font-medium transition-all flex items-center justify-center gap-2 cursor-not-allowed text-xs opacity-50">
-                                <FileText size={16} />
-                                <span>Bearbeiten (Bald verfügbar)</span>
-                            </button>
+                            <Link
+                                href={`/app-home/offers/edit/${job.id}`}
+                                className="w-full py-3 px-4 rounded-xl bg-white/[0.03] hover:bg-white/5 border border-white/10 text-white font-medium transition-all flex items-center justify-center gap-2 hover:border-indigo-500/30 group"
+                            >
+                                <FileText size={16} className="text-indigo-400 group-hover:text-indigo-300" />
+                                <span>Bearbeiten</span>
+                            </Link>
                         </div>
                     </div>
 

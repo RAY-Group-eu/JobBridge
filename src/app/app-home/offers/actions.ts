@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createJob as createJobDAL, getEffectiveView, retrySaveJobPrivateDetails } from "@/lib/dal/jobbridge";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ErrorInfo } from "@/lib/types/jobbridge";
 import type { AccountType } from "@/lib/types";
 import { Database } from "@/lib/types/supabase";
@@ -18,6 +19,7 @@ const createJobSchema = z.object({
     wage: z.number().optional(),
     lat: z.string().optional(),
     lng: z.string().optional(),
+    reach: z.enum(["internal_rheinbach", "extended"]).optional(),
 });
 
 export type CreateJobActionState =
@@ -38,11 +40,19 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
     const existingJobId = (formData.get("job_id") as string | null) ?? null;
 
     // Get User Profile for Market ID (and Address Fallback v13)
-    // We cast to any to get address fields that might be missing in strict types but exist in DB
-    const { data: profile } = await (supabase.from("profiles") as any)
-        .select("market_id, account_type, street, house_number, zip, city, postal_code")
+    // Use Admin Client to bypass RLS and ensure we get the profile
+    const adminClient = getSupabaseAdminClient() || supabase;
+    const { data: profile, error: profileError } = await (adminClient.from("profiles") as any)
+        .select("market_id, account_type, street, house_number, zip, city")
         .eq("id", user.id)
         .single();
+
+    // Debug Error
+    if (profileError || !profile) {
+        console.error("CreateJobs Profile Fetch Error:", profileError);
+        const state: CreateJobActionState = { status: "error", error: { message: "Kein Profil gefunden. Bitte Profil vervollständigen." } };
+        return state;
+    }
 
     let marketId = (profile as any)?.market_id;
 
@@ -104,8 +114,12 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
         } else {
             // Fallback: Check Profile Address (v13)
             const p = profile as any;
-            // Note: 'zip' vs 'postal_code' -> DB usually has one or other, we select both to be safe
-            const zip = p.zip || p.postal_code;
+            if (!p) {
+                const state: CreateJobActionState = { status: "error", error: { message: "Kein Profil gefunden. Bitte Profil vervollständigen." } };
+                return state;
+            }
+            // Note: 'zip' is the column name in profiles
+            const zip = p.zip;
 
             if (p.street && p.city && zip) {
                 // Use Profile Address
@@ -130,10 +144,11 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
     const rawData = {
         title: (formData.get("title") as string)?.trim(),
         description: (formData.get("description") as string)?.trim(),
-        address_full: addressFull,
+        address_full: addressFull || undefined,
         wage: parseFloat(formData.get("wage") as string) || 12.00,
-        lat: latInput,
-        lng: lngInput,
+        lat: latInput || undefined,
+        lng: lngInput || undefined,
+        reach: (formData.get("reach") as string) || "internal_rheinbach",
     };
 
     const validated = createJobSchema.safeParse(rawData);
@@ -189,7 +204,8 @@ export async function createJob(_prevState: CreateJobActionState, formData: Form
             public_location_label: publicLabel,
             public_lat: finalLat,
             public_lng: finalLng,
-            address_reveal_policy: "after_accept"
+            address_reveal_policy: "after_accept",
+            reach: validated.data.reach ?? "internal_rheinbach"
         },
         privateDetails,
     });

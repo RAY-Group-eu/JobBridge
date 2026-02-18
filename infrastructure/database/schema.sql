@@ -606,3 +606,34 @@ BEGIN
 END $$;
 
 COMMIT;
+
+-- -----------------------------------------------------------------------------
+-- Notifications System
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  body text NOT NULL,
+  type text NOT NULL CHECK (type IN ('info', 'success', 'warning', 'error', 'message')) DEFAULT 'info',
+  read_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON public.notifications(user_id) WHERE read_at IS NULL;
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
+CREATE POLICY "Users can view their own notifications"
+  ON public.notifications FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins can manage notifications" ON public.notifications;
+CREATE POLICY "Admins can manage notifications"
+  ON public.notifications FOR ALL
+  TO authenticated
+  USING (public.has_system_role(auth.uid(), 'admin'));
+

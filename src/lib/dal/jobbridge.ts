@@ -299,6 +299,7 @@ export type CreateJobInput = {
   public_location_label?: string;
   public_lat?: number | null;
   public_lng?: number | null;
+  reach?: 'internal_rheinbach' | 'extended' | null;
 };
 
 export type JobRow = Database["public"]["Tables"]["jobs"]["Row"] & {

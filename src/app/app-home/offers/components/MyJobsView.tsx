@@ -37,60 +37,54 @@ export function MyJobsView({ jobs }: { jobs: JobsListItem[] }) {
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h2 className="text-xl font-bold text-white mb-1">Meine Inserate</h2>
-                    <p className="text-slate-400 text-sm">Verwalte deine offenen Stellen und vergangene Aufträge.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Link href="/app-home/offers/new" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-5 py-2.5 rounded-xl transition-colors font-bold text-sm shadow-lg shadow-white/5">
-                        <Plus size={18} />
-                        <span>Neuer Job</span>
-                    </Link>
-                </div>
-            </div>
+        <div className="space-y-12">
+            {/* Active Jobs Section */}
+            <section>
+                {activeJobs.length === 0 ? (
+                    <div className="text-center py-12 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                        <p className="text-slate-500">Aktuell keine offenen Stellen.</p>
+                        <Link href="/app-home/offers/new" className="text-indigo-400 hover:text-indigo-300 text-sm font-medium mt-2 inline-block">
+                            + Jetzt inserieren
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {activeJobs.map((job) => (
+                            <JobCard
+                                key={job.id}
+                                job={job}
+                                isDemo={false}
+                                isApplied={false}
+                                providerStatus={job.status}
+                                onSelect={(j) => router.push(`/app-home/offers/${j.id}`)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
 
-            {/* Tabs */}
-            <div className="flex bg-white/5 p-1 rounded-xl w-fit border border-white/5">
-                <button
-                    onClick={() => setActiveTab('active')}
-                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'active'
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        }`}
-                >
-                    Aktuell ({activeJobs.length})
-                </button>
-                <button
-                    onClick={() => setActiveTab('closed')}
-                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'closed'
-                        ? 'bg-slate-700 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        }`}
-                >
-                    Abgeschlossen ({closedJobs.length})
-                </button>
-            </div>
+            {/* Past Jobs Section */}
+            {closedJobs.length > 0 && (
+                <section className="opacity-80 hover:opacity-100 transition-opacity pt-8 border-t border-white/5">
+                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-6">
+                        Vergangene Aufträge
+                    </h2>
 
-            {displayedJobs.length === 0 ? (
-                <div className="text-center py-20 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
-                    <p className="text-slate-500">Keine {activeTab === 'active' ? 'aktiven' : 'abgeschlossenen'} Jobs gefunden.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayedJobs.map((job) => (
-                        <JobCard
-                            key={job.id}
-                            job={job}
-                            isDemo={false}
-                            isApplied={false}
-                            providerStatus={job.status}
-                            onSelect={(j) => router.push(`/app-home/offers/${j.id}`)}
-                        />
-                    ))}
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grayscale-[0.3] hover:grayscale-0 transition-all duration-500">
+                        {closedJobs.map((job) => (
+                            <JobCard
+                                key={job.id}
+                                job={job}
+                                isDemo={false}
+                                isApplied={false}
+                                providerStatus={job.status}
+                                onSelect={(j) => router.push(`/app-home/offers/${j.id}`)}
+                            />
+                        ))}
+                    </div>
+                </section>
             )}
         </div>
     );
 }
+

@@ -267,6 +267,27 @@ export function CreateJobForm({ defaultLocation }: { defaultLocation?: DefaultLo
                 </div>
             </div>
 
+            {/* Reach / Visibility Section */}
+            <div className="pt-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">Reichweite</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="cursor-pointer">
+                        <input type="radio" name="reach" value="internal_rheinbach" defaultChecked className="peer sr-only" />
+                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5">
+                            <h4 className="font-bold text-sm text-white peer-checked:text-indigo-300">Lokal in Rheinbach</h4>
+                            <p className="text-xs text-slate-400 mt-1">Nur für Nutzer aus Rheinbach sichtbar. Perfekt für Nachbarschaftshilfe.</p>
+                        </div>
+                    </label>
+                    <label className="cursor-pointer">
+                        <input type="radio" name="reach" value="extended" className="peer sr-only" />
+                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5">
+                            <h4 className="font-bold text-sm text-white peer-checked:text-indigo-300">Überregional</h4>
+                            <p className="text-xs text-slate-400 mt-1">Auch für Nutzer aus umliegenden Städten sichtbar.</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             {state?.status === "error" && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-200 text-sm">
                     <div className="font-semibold flex items-center gap-2">
