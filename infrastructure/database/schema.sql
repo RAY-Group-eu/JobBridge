@@ -1,13 +1,200 @@
+-- System Roles Seeding
+insert into public.system_roles (name, description)
+values 
+  ('analyst', 'Can view dashboards and metrics but cannot edit data.'),
+  ('moderator', 'Can review reports and moderate content.'),
+  ('admin', 'Full access to system configuration and user management.')
+on conflict (name) do nothing;
+
+-- Helper: has_system_role
+create or replace function public.has_system_role(
+  user_id uuid, 
+  required_role text
+) returns boolean as $$
+begin
+  return exists (
+    select 1 
+    from public.user_system_roles usr
+    join public.system_roles sr on usr.role_id = sr.id
+    where usr.user_id = has_system_role.user_id
+      and sr.name = required_role
+  );
+end;
+$$ language plpgsql security definer;
+
+-- Role Overrides
+create table if not exists public.role_overrides (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  view_as text not null check (view_as in ('job_seeker', 'job_provider')),
+  expires_at timestamptz not null,
+  reason text,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz default now()
+);
+
+alter table public.role_overrides enable row level security;
+
+create policy "Users can view their own override"
+  on public.role_overrides for select
+  using (auth.uid() = user_id);
+
+create policy "Admins can manage overrides"
+  on public.role_overrides for all
+  using (
+    public.has_system_role(auth.uid(), 'admin')
+  );
+
+-- System Roles RLS
+alter table public.system_roles enable row level security;
+alter table public.user_system_roles enable row level security;
+
+create policy "Authenticated users can read system_roles"
+  on public.system_roles for select
+  to authenticated
+  using (true);
+
+create policy "Admins can manage system_roles"
+  on public.system_roles for all
+  using (public.has_system_role(auth.uid(), 'admin'));
+
+-- User System Roles RLS
+create policy "Staff can view user role assignments"
+  on public.user_system_roles for select
+  using (
+    exists (
+      select 1 from public.user_system_roles usr 
+      where usr.user_id = auth.uid() 
+    )
+  );
+
+create policy "Admins can manage user roles"
+  on public.user_system_roles for all
+  using (public.has_system_role(auth.uid(), 'admin'));
+
+-- Demo Sessions Policies
+drop policy if exists "Users can manage their own demo session" on public.demo_sessions;
+drop policy if exists "Admins can view all demo sessions" on public.demo_sessions;
+
+alter table public.demo_sessions enable row level security;
+
+create policy "Users can manage their own demo session"
+  on public.demo_sessions for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create policy "Admins can view all demo sessions"
+  on public.demo_sessions for select
+  using (public.has_system_role(auth.uid(), 'admin'));
 BEGIN;
 
--- Required for digest()/gen_random_bytes() used in guardian invite tokens.
+CREATE OR REPLACE FUNCTION public.prevent_profile_identity_change()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  old_name text := nullif(trim(coalesce(OLD.full_name, '')), '');
+  new_name text := nullif(trim(coalesce(NEW.full_name, '')), '');
+  old_city text := nullif(trim(coalesce(OLD.city, '')), '');
+  new_city text := nullif(trim(coalesce(NEW.city, '')), '');
+BEGIN
+  -- Allow cosmetic changes (whitespace only)
+  IF new_name IS NOT DISTINCT FROM old_name
+     AND new_city IS NOT DISTINCT FROM old_city THEN
+    RETURN NEW;
+  END IF;
+
+  -- Bypasses for internal roles
+  IF auth.role() = 'service_role' OR current_user = 'postgres' THEN
+    RETURN NEW;
+  END IF;
+
+  -- Block changes if previous value existed
+  IF (new_name IS DISTINCT FROM old_name AND old_name IS NOT NULL)
+     OR (new_city IS DISTINCT FROM old_city AND old_city IS NOT NULL) THEN
+    RAISE EXCEPTION 'Profilname und Stadt/Ort sind fixiert. Bitte Support kontaktieren.'
+      USING ERRCODE = 'P0001';
+  ELSE
+    RETURN NEW;
+  END IF;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_profiles_lock_full_name ON public.profiles;
+
+CREATE TRIGGER trg_profiles_lock_full_name
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_profile_identity_change();
+
+COMMIT;
+BEGIN;
+
+-- Profile should be directly editable from the UI.
+DROP TRIGGER IF EXISTS trg_profiles_lock_full_name ON public.profiles;
+DROP FUNCTION IF EXISTS public.prevent_profile_identity_change();
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS headline text,
+  ADD COLUMN IF NOT EXISTS bio text,
+  ADD COLUMN IF NOT EXISTS phone text,
+  ADD COLUMN IF NOT EXISTS website text;
+
+COMMIT;
+BEGIN;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS interests text;
+
+CREATE OR REPLACE FUNCTION public.prevent_profile_identity_change()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  old_name text := nullif(trim(coalesce(OLD.full_name, '')), '');
+  new_name text := nullif(trim(coalesce(NEW.full_name, '')), '');
+  old_city text := nullif(trim(coalesce(OLD.city, '')), '');
+  new_city text := nullif(trim(coalesce(NEW.city, '')), '');
+BEGIN
+  -- Allow cosmetic changes
+  IF new_name IS NOT DISTINCT FROM old_name
+     AND new_city IS NOT DISTINCT FROM old_city THEN
+    RETURN NEW;
+  END IF;
+
+  -- Bypass for service role
+  IF auth.role() = 'service_role' OR current_user = 'postgres' THEN
+    RETURN NEW;
+  END IF;
+
+  -- Block changes if previous value existed
+  IF (new_name IS DISTINCT FROM old_name AND old_name IS NOT NULL)
+     OR (new_city IS DISTINCT FROM old_city AND old_city IS NOT NULL) THEN
+    RAISE EXCEPTION 'Profilname und Stadt/Ort sind fixiert. Bitte Support kontaktieren.'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_profiles_lock_full_name ON public.profiles;
+
+CREATE TRIGGER trg_profiles_lock_full_name
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_profile_identity_change();
+
+COMMIT;
+BEGIN;
+
+-- Required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- -----------------------------------------------------------------------------
--- 1) Canonical roles: account_type + provider_kind (drop legacy user_type)
+-- Canonical roles: account_type + provider_kind
 -- -----------------------------------------------------------------------------
 
--- Base account type (job_seeker/job_provider).
+-- Account Type Enum
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -19,8 +206,7 @@ BEGIN
   END IF;
 END $$;
 
--- Some environments already have an `account_type` enum with different labels.
--- If so, rename it to a legacy name and recreate the canonical enum.
+-- Handle legacy enum conflicts
 DO $$
 DECLARE
   has_job_seeker boolean;
@@ -45,7 +231,6 @@ BEGIN
   ) INTO has_job_provider;
 
   IF NOT (has_job_seeker AND has_job_provider) THEN
-    -- Pick a unique legacy enum name.
     WHILE EXISTS (
       SELECT 1
       FROM pg_type t
@@ -61,7 +246,7 @@ BEGIN
   END IF;
 END $$;
 
--- Guardian linking state for minor accounts.
+-- Guardian Status Enum
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -84,7 +269,7 @@ BEGIN
   END IF;
 END $$;
 
--- Provider verification state (manual today, can be automated later).
+-- Provider Verification Enum
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -108,7 +293,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS company_contact_email text,
   ADD COLUMN IF NOT EXISTS company_message text;
 
--- If `profiles.account_type` still uses a legacy enum type, convert it.
+-- Convert legacy account_type if needed
 DO $$
 DECLARE
   udt text;
@@ -126,13 +311,10 @@ BEGIN
       TYPE public.account_type
       USING (
         CASE
-          -- Prefer legacy account_type label patterns if present
           WHEN lower(coalesce(account_type::text, '')) LIKE '%provider%' THEN 'job_provider'
           WHEN lower(coalesce(account_type::text, '')) LIKE '%seeker%' THEN 'job_seeker'
-          -- Fallback to legacy user_type if present
           WHEN lower(coalesce(user_type, '')) IN ('adult', 'senior', 'company') THEN 'job_provider'
           WHEN lower(coalesce(user_type, '')) = 'youth' THEN 'job_seeker'
-          -- Fallback to age
           WHEN birthdate IS NOT NULL AND birthdate > (current_date - interval '18 years')::date THEN 'job_seeker'
           WHEN birthdate IS NOT NULL THEN 'job_provider'
           ELSE 'job_seeker'
@@ -142,8 +324,7 @@ BEGIN
   END IF;
 END $$;
 
--- Ensure account_type exists and is set.
--- If your DB already has a different enum name, adapt here.
+-- Ensure account_type default
 ALTER TABLE public.profiles
   ALTER COLUMN account_type SET DEFAULT 'job_seeker'::public.account_type;
 
@@ -154,7 +335,7 @@ WHERE account_type IS NULL;
 ALTER TABLE public.profiles
   ALTER COLUMN account_type SET NOT NULL;
 
--- Backfill account_type/provider_kind from legacy user_type (if present).
+-- Backfill from legacy user_type
 DO $$
 BEGIN
   IF EXISTS (
@@ -164,7 +345,6 @@ BEGIN
       AND table_name = 'profiles'
       AND column_name = 'user_type'
   ) THEN
-    -- account_type: youth -> job_seeker, adult/company -> job_provider
     UPDATE public.profiles
     SET account_type = 'job_provider'::public.account_type
     WHERE lower(coalesce(user_type, '')) IN ('adult', 'senior', 'company')
@@ -175,7 +355,6 @@ BEGIN
     WHERE lower(coalesce(user_type, '')) IN ('youth')
       AND (account_type IS NULL OR account_type <> 'job_seeker'::public.account_type);
 
-    -- provider_kind for providers
     UPDATE public.profiles
     SET provider_kind = CASE
       WHEN lower(coalesce(user_type, '')) = 'company' THEN 'company'::public.provider_kind
@@ -184,29 +363,18 @@ BEGIN
     END
     WHERE provider_kind IS NULL;
 
-    -- company_name: if the old system stored company name in city, keep a best-effort copy.
     UPDATE public.profiles
     SET company_name = COALESCE(company_name, NULLIF(trim(city), ''))
     WHERE lower(coalesce(user_type, '')) = 'company' AND company_name IS NULL;
   END IF;
 END $$;
 
--- If guardian_id is already present, normalize guardian_status.
+-- Normalize guardian status
 UPDATE public.profiles
 SET guardian_status = 'linked'::public.guardian_status
 WHERE guardian_id IS NOT NULL AND guardian_status <> 'linked';
 
--- Optional: enforce provider_kind consistency (can be enabled once data is clean).
--- ALTER TABLE public.profiles
---   ADD CONSTRAINT profiles_provider_kind_consistency
---   CHECK (
---     (account_type = 'job_seeker' AND provider_kind IS NULL)
---     OR
---     (account_type = 'job_provider' AND provider_kind IS NOT NULL)
---   );
-
--- Drop legacy columns that caused confusion.
--- Best-effort so the migration doesn't fail if a policy/view still references them.
+-- Cleanup legacy columns (best effort)
 DO $$
 BEGIN
   BEGIN
@@ -229,7 +397,7 @@ BEGIN
 END $$;
 
 -- -----------------------------------------------------------------------------
--- 2) Sync auth email/phone verification into profiles
+-- Auth Sync Trigger
 -- -----------------------------------------------------------------------------
 
 ALTER TABLE public.profiles
@@ -276,7 +444,7 @@ FROM auth.users u
 WHERE u.id = p.id;
 
 -- -----------------------------------------------------------------------------
--- 3) Guardian verification (minor accounts): invitations + linking
+-- Guardian verification: invitations + linking
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.guardian_invitations (
@@ -384,5 +552,57 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
+
+COMMIT;
+BEGIN;
+
+-- Adjust public profile fields
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS bio text,
+  ADD COLUMN IF NOT EXISTS interests text,
+  ADD COLUMN IF NOT EXISTS skills text,
+  ADD COLUMN IF NOT EXISTS availability_note text;
+
+-- Drop legacy columns safely
+DO $$
+BEGIN
+  -- If those columns exist, wipe data first (safety for minors), even if drop is skipped.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'phone'
+  ) THEN
+    EXECUTE 'UPDATE public.profiles SET phone = NULL';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'website'
+  ) THEN
+    EXECUTE 'UPDATE public.profiles SET website = NULL';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'headline'
+  ) THEN
+    EXECUTE 'UPDATE public.profiles SET headline = NULL';
+  END IF;
+
+  BEGIN
+    ALTER TABLE public.profiles DROP COLUMN IF EXISTS phone;
+  EXCEPTION WHEN dependent_objects_still_exist THEN
+    RAISE NOTICE 'Skipping DROP COLUMN public.profiles.phone (dependent objects exist)';
+  END;
+
+  BEGIN
+    ALTER TABLE public.profiles DROP COLUMN IF EXISTS website;
+  EXCEPTION WHEN dependent_objects_still_exist THEN
+    RAISE NOTICE 'Skipping DROP COLUMN public.profiles.website (dependent objects exist)';
+  END;
+
+  BEGIN
+    ALTER TABLE public.profiles DROP COLUMN IF EXISTS headline;
+  EXCEPTION WHEN dependent_objects_still_exist THEN
+    RAISE NOTICE 'Skipping DROP COLUMN public.profiles.headline (dependent objects exist)';
+  END;
+END $$;
 
 COMMIT;

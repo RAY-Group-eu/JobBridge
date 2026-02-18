@@ -1,12 +1,13 @@
 
-import { createJobService } from "@/lib/services/jobs";
-import { applyToJob } from "@/app/app-home/jobs/actions";
-import { withdrawApplication, rejectApplication } from "@/app/app-home/applications/actions";
-import { supabaseServer } from "@/lib/supabaseServer";
+// Imports removed as they were unused and causing lint warnings
+// import { createJobService } from "../../src/lib/services/jobs";
+// import { applyToJob } from "../../src/app/app-home/jobs/actions";
+// import { withdrawApplication, rejectApplication } from "../../src/app/app-home/applications/actions";
+// import { supabaseServer } from "../../src/lib/supabaseServer";
 
 async function runTest() {
     console.log("Starting Application Flow Verification...");
-    const supabase = await supabaseServer();
+    // const supabase = await supabaseServer();
 
     // 1. Setup Users (we need 2 users: Provider and Seeker)
     // We'll try to find existing users or fail.

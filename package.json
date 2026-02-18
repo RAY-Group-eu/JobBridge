@@ -1,5 +1,5 @@
 {
-  "name": "dropbridge",
+  "name": "jobbridge",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -34,8 +34,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.7",
+    "eslint": "^10.0.0",
+    "eslint-config-next": "^0.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
