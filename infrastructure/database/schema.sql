@@ -637,3 +637,24 @@ CREATE POLICY "Admins can manage notifications"
   TO authenticated
   USING (public.has_system_role(auth.uid(), 'admin'));
 
+
+-- -----------------------------------------------------------------------------
+-- Jobs Extensions (2026-02-18)
+-- -----------------------------------------------------------------------------
+
+-- Add reach column to jobs table
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS reach text DEFAULT 'internal_rheinbach';
+
+-- Add check constraint for valid values
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'jobs_reach_check'
+  ) THEN
+    ALTER TABLE public.jobs ADD CONSTRAINT jobs_reach_check CHECK (reach IN ('internal_rheinbach', 'extended'));
+  END IF;
+END $$;
+
+-- Add updated_at column to jobs table
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+

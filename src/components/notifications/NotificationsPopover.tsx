@@ -35,7 +35,7 @@ export function NotificationsPopover() {
                 .order("created_at", { ascending: false })
                 .limit(10) as any;
 
-            const mapped = (data ?? []).map((notification) => {
+            const mapped = (data ?? []).map((notification: any) => {
                 return {
                     id: notification.id,
                     type: notification.type,
