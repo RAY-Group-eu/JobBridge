@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Profile } from "@/lib/types";
 import { BRAND_EMAIL } from "@/lib/constants";
 import { LockKeyhole, Building2, User, MapPin, Briefcase, Sparkles, Clock, ShieldCheck, ShieldAlert, ArrowRight, Plus, Users, Calendar, Fingerprint, Search } from "lucide-react";
@@ -80,6 +81,23 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
             setGuardiansList(res.guardians);
         }
     };
+
+    // Auto-Scroll Logic for Missing Distance CTA
+    const searchParams = useSearchParams();
+    useEffect(() => {
+        if (searchParams.get("focus") === "location") {
+            const el = document.getElementById("location-section");
+            if (el) {
+                // Slight delay ensures the DOM is fully rendered before scrolling
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    // Optional: Add a brief highlight glow to draw attention
+                    el.classList.add("ring-4", "ring-indigo-500/50", "transition-all", "duration-1000");
+                    setTimeout(() => el.classList.remove("ring-4", "ring-indigo-500/50"), 2000);
+                }, 300);
+            }
+        }
+    }, [searchParams]);
 
     // Wards (Children) Management
     const [wardsList, setWardsList] = useState<GuardianDisplay[]>([]);
@@ -179,7 +197,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
             <div className="relative z-10 container mx-auto px-4 lg:px-8 py-8 md:py-12 max-w-[1600px]">
 
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-10">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-6 md:mb-8">
                     <div className="space-y-2 relative">
                         {/* Decorative line behind text */}
                         <div className="absolute -left-8 top-2 bottom-2 w-1 bg-gradient-to-b from-indigo-500 to-transparent opacity-0 md:opacity-30 rounded-full" />
@@ -258,7 +276,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                 )}
 
                 {/* --- NEW V6: VERIFICATION CTA & GUARDIAN BANNER --- */}
-                <div className="mb-12">
+                <div className="mb-6 md:mb-8">
                     {isProvider ? (
                         // PROVIDER: Verification Call-To-Action (Replaces old badges)
                         !isVerified && (
@@ -677,7 +695,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
 
                         {/* SEEKER LOCATION BLOCK */}
                         {!isProvider && (
-                            <div className="rounded-[2.5rem] bg-[#0A0A0C] border border-white/[0.05] p-6 md:p-10 relative overflow-hidden shadow-2xl">
+                            <div id="location-section" className="rounded-[2.5rem] bg-[#0A0A0C] border border-white/[0.05] p-6 md:p-10 relative overflow-hidden shadow-2xl transition-all">
                                 <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[100px] pointer-events-none" />
 
                                 <div className="relative z-10">
@@ -687,7 +705,6 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                         </div>
                                         <div className="space-y-1 flex-1">
                                             <div className="flex items-center gap-3">
-                                                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Wohnort & Distanz</h3>
                                                 <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Wohnort & Distanz</h3>
                                             </div>
                                             <p className="text-slate-400 text-sm font-medium">Dein Wohnort wird niemals öffentlich geteilt, sondern nur zur Entfernungsberechnung (z.B. "5 km entfernt") für Jobs genutzt.</p>
@@ -726,7 +743,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                         value={houseNumber}
                                                         onChange={(e) => setHouseNumber(e.target.value)}
                                                         placeholder="Nr."
-                                                        className="w-24 h-14 rounded-2xl bg-[#0F0F12] border-2 border-transparent px-5 text-slate-200 placeholder:text-slate-700 focus:outline-none focus:bg-[#121216] focus:border-sky-500/20 transition-all font-medium text-center"
+                                                        className="w-[100px] sm:w-[120px] h-14 rounded-2xl bg-[#0F0F12] border-2 border-transparent px-5 text-slate-200 placeholder:text-slate-700 focus:outline-none focus:bg-[#121216] focus:border-sky-500/20 transition-all font-medium text-center"
                                                     />
                                                 </div>
                                             </div>
@@ -736,7 +753,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                     PLZ & Ort
                                                 </label>
                                                 <div className="flex gap-2">
-                                                    <div className="relative w-36 group/zip">
+                                                    <div className="relative w-[130px] sm:w-[150px] group/zip flex-shrink-0">
                                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
                                                             <LockKeyhole size={16} />
                                                         </div>
@@ -744,7 +761,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                             value={zip}
                                                             disabled
                                                             title="Deine PLZ ist fest mit deinem Account verknüpft und kann nicht geändert werden."
-                                                            className="w-full h-14 rounded-2xl bg-[#0F0F12]/50 border-2 border-transparent px-5 pr-10 text-slate-400 cursor-not-allowed font-medium text-center"
+                                                            className="w-full h-14 rounded-2xl bg-[#0F0F12]/50 border-2 border-transparent px-5 pr-10 text-slate-400 cursor-not-allowed font-medium"
                                                         />
                                                     </div>
                                                     <div className="relative w-full group/city">

@@ -186,11 +186,26 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                     ) : (
                         <div className="flex items-center gap-2">
                             <MapPin size={16} className={job.distance_km != null ? "text-indigo-400" : "text-slate-500"} />
-                            <span className={`truncate max-w-[150px] ${job.distance_km != null ? "text-white font-medium" : "text-slate-500 text-xs"}`}>
-                                {job.distance_km != null
-                                    ? `${(Math.round(job.distance_km * 10) / 10).toFixed(1).replace('.', ',')} km entfernt`
-                                    : "Entfernung ausstehend"}
-                            </span>
+                            {job.distance_km != null ? (
+                                <span className="truncate max-w-[150px] text-white font-medium">
+                                    {`${(Math.round(job.distance_km * 10) / 10).toFixed(1).replace('.', ',')} km entfernt`}
+                                </span>
+                            ) : (
+                                <Link
+                                    href="/app-home/profile?focus=location"
+                                    className="flex items-center gap-1.5 group/loc relative"
+                                    title="Wohnort hinzufügen für exakte Entfernungsangaben"
+                                >
+                                    <span className="text-slate-500 text-xs">Entfernung unbekannt</span>
+                                    {/* Pulse effect wrapper */}
+                                    <div className="relative flex items-center justify-center">
+                                        <div className="absolute inset-0 bg-indigo-500/20 rounded-lg blur-[4px] group-hover/loc:bg-indigo-500/40 transition-all duration-300 animate-pulse" />
+                                        <span className="relative text-[10px] font-bold text-indigo-100 bg-indigo-600 hover:bg-indigo-500 px-2 py-0.5 rounded-lg transition-colors ring-1 ring-white/10 shadow-lg whitespace-nowrap">
+                                            Wohnort angeben
+                                        </span>
+                                    </div>
+                                </Link>
+                            )}
                         </div>
                     )}
                     <div className="flex items-center gap-2 ml-auto text-xs text-slate-500 font-medium">
