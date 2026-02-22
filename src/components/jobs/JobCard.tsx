@@ -15,11 +15,12 @@ interface JobCardProps {
     isLocked?: boolean;
     hideStatusLabel?: boolean;
     providerStatus?: "draft" | "open" | "closed" | "reviewing" | "filled" | "reserved";
+    isCrossRegionalBadge?: boolean;
     onSelect?: (job: JobsListItem) => void;
     href?: string;
 }
 
-export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, providerStatus, onSelect, href }: JobCardProps) {
+export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked, hideStatusLabel, providerStatus, isCrossRegionalBadge, onSelect, href }: JobCardProps) {
     const getStatusBadge = () => {
         if (providerStatus) {
             switch (providerStatus) {
@@ -138,10 +139,17 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
             <div className={`relative z-10 flex flex-col h-full ${isLocked ? 'md:opacity-50 md:blur-[1px] md:group-hover:blur-sm transition-all duration-300' : ''}`}>
                 <div className="flex justify-between items-start mb-5">
                     <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 text-indigo-400 border border-indigo-500/10 group-hover:from-indigo-500/25 group-hover:to-violet-500/15 group-hover:border-indigo-500/25 group-hover:text-indigo-300 transition-all duration-300">
-                            <Building2 size={24} />
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500/15 to-violet-500/10 text-indigo-400 border border-indigo-500/10 group-hover:from-indigo-500/25 group-hover:to-violet-500/15 group-hover:border-indigo-500/25 group-hover:text-indigo-300 transition-all duration-300 shadow-inner">
+                            <Building2 size={24} className="group-hover:scale-110 transition-transform duration-500" />
                         </div>
                         <div>
+                            {/* Extended Job Badge - Shows the origin market if it is an extended job */}
+                            {isCrossRegionalBadge && job.market_name && !isApplied && !isLocked && (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-bold uppercase tracking-wider mb-2 animate-in fade-in slide-in-from-left-2 shadow-[0_0_15px_-3px_rgba(139,92,246,0.3)]">
+                                    <MapPin size={10} className="animate-pulse text-violet-400" />
+                                    <span>Aus {job.market_name}</span>
+                                </div>
+                            )}
                             <h3 className="text-xl font-bold text-white leading-tight mb-1 group-hover:text-indigo-100 transition-colors">
                                 {job.title}
                             </h3>
@@ -168,40 +176,44 @@ export const JobCard = memo(function JobCard({ job, isDemo, isApplied, isLocked,
                         <Euro size={16} className="text-emerald-400" />
                         <span className="font-semibold text-white">{job.wage_hourly} € / Std.</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-indigo-400" />
-                        <span className="truncate max-w-[150px]">{job.public_location_label || job.market_name || "Standort unbekannt"}</span>
-                    </div>
-                    {job.distance_km != null && (
-                        <div className="flex items-center gap-2 ml-auto text-xs text-slate-500 font-medium">
-                            <Clock size={14} className="text-slate-600" />
-                            <span>{timeAgo(job.created_at)}</span>
-                            {job.creator && (
-                                <>
-                                    <span className="text-slate-700">•</span>
-                                    <div className="flex items-center gap-1.5 text-slate-400">
-                                        <div className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[9px] font-bold text-indigo-400 overflow-hidden">
-                                            {job.creator.avatar_url ? (
-                                                <img src={job.creator.avatar_url} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                (job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()
-                                            )}
-                                        </div>
-                                        <span className="truncate max-w-[100px]">
-                                            {job.creator.company_name || job.creator.full_name || "Unbekannt"}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
-                            {/* Original distance_km display, integrated if still desired */}
-                            {job.distance_km != null && (
-                                <>
-                                    <span className="text-slate-700">•</span>
-                                    <span className="text-slate-500">{Math.round(job.distance_km * 10) / 10} km</span>
-                                </>
-                            )}
+                    {providerStatus ? (
+                        <div className="flex items-center gap-2">
+                            <MapPin size={16} className="text-indigo-400" />
+                            <span className="truncate max-w-[150px]">
+                                {job.public_location_label || job.market_name || "Standort unbekannt"}
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <MapPin size={16} className={job.distance_km != null ? "text-indigo-400" : "text-slate-500"} />
+                            <span className={`truncate max-w-[150px] ${job.distance_km != null ? "text-white font-medium" : "text-slate-500 text-xs"}`}>
+                                {job.distance_km != null
+                                    ? `${job.distance_km.toFixed(1)} km entfernt`
+                                    : "Entfernung unbekannt"}
+                            </span>
                         </div>
                     )}
+                    <div className="flex items-center gap-2 ml-auto text-xs text-slate-500 font-medium">
+                        <Clock size={14} className="text-slate-600" />
+                        <span>{timeAgo(job.created_at)}</span>
+                        {job.creator && (
+                            <>
+                                <span className="text-slate-700">•</span>
+                                <div className="flex items-center gap-1.5 text-slate-400">
+                                    <div className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[9px] font-bold text-indigo-400 overflow-hidden">
+                                        {job.creator.avatar_url ? (
+                                            <img src={job.creator.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            (job.creator.company_name || job.creator.full_name || "?")[0].toUpperCase()
+                                        )}
+                                    </div>
+                                    <span className="truncate max-w-[100px]">
+                                        {job.creator.company_name || job.creator.full_name || "Unbekannt"}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
 

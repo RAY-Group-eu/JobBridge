@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { ButtonPrimary } from "@/components/ui/ButtonPrimary";
-import { Moon, Sun, Lock } from "lucide-react";
+import { Moon, Sun, Lock, MapPin } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfileSettingsPage() {
@@ -34,6 +34,26 @@ export default function ProfileSettingsPage() {
                                 <span className="text-sm font-medium">Dunkel</span>
                             </button>
                         </div>
+                    </div>
+                    {/* Location Section */}
+                    <div className="bg-card border border-border rounded-2xl p-6">
+                        <h3 className="text-lg font-medium text-foreground mb-4">Standort</h3>
+                        <Link href="/app-home/profile/settings/location">
+                            <div className="w-full flex items-center justify-between p-4 rounded-xl bg-background border border-border hover:bg-muted transition-colors cursor-pointer group">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+                                        <MapPin size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-sm font-medium text-foreground">Meine Adresse (für Entfernungen)</p>
+                                        <p className="text-xs text-muted-foreground">Hinterlege deinen Standort für genaue Job-Distanzen</p>
+                                    </div>
+                                </div>
+                                <div className="text-sm text-indigo-500 group-hover:translate-x-1 transition-transform">
+                                    Bearbeiten &rarr;
+                                </div>
+                            </div>
+                        </Link>
                     </div>
 
                     {/* Security Section */}

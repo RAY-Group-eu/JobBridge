@@ -81,11 +81,14 @@ export default async function JobsPage() {
 
     // Active Feed: Open jobs AND Reserved jobs (for Waitlist opportunities)
     // EXCLUDING any job I already have an application for (waitlist or active)
-    const activeJobs = rawActiveJobs.filter(job =>
+    const allActiveJobs = rawActiveJobs.filter(job =>
         !appliedJobIds.has(job.id) &&
         !waitlistedJobIds.has(job.id) &&
         (job.status === 'open' || job.status === 'reserved')
     );
+
+    const localActiveJobs = allActiveJobs.filter(job => job.market_id === profile.market_id);
+    const extendedActiveJobs = allActiveJobs.filter(job => job.market_id !== profile.market_id && job.reach === 'extended');
 
     return (
         <div className="container mx-auto py-2 px-4 md:px-6">
@@ -106,7 +109,8 @@ export default async function JobsPage() {
                     </div>
                 ) : (
                     <JobsList
-                        activeJobs={activeJobs}
+                        localActiveJobs={localActiveJobs}
+                        extendedActiveJobs={extendedActiveJobs}
                         waitlistedJobs={waitlistedJobs}
                         appliedJobs={appliedJobs}
                         isDemo={view.source === "demo"}

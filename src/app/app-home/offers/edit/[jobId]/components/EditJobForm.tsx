@@ -9,7 +9,7 @@ import { Loader2, MapPin, Lock } from "lucide-react";
 
 type Job = Database['public']['Tables']['jobs']['Row'] & { reach?: string | null };
 
-export function EditJobForm({ job }: { job: Job }) {
+export function EditJobForm({ job, marketName }: { job: Job, marketName: string }) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -96,9 +96,9 @@ export function EditJobForm({ job }: { job: Job }) {
                             defaultChecked={job.reach === 'internal_rheinbach' || !job.reach}
                             className="peer sr-only"
                         />
-                        <div className="p-4 rounded-xl bg-slate-950/50 border border-white/10 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5">
-                            <h4 className="font-bold text-sm text-white peer-checked:text-indigo-300">Lokal in Rheinbach</h4>
-                            <p className="text-xs text-slate-400 mt-1">Nur für Nutzer aus Rheinbach sichtbar.</p>
+                        <div className="p-4 rounded-xl bg-slate-950/50 border border-white/10 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5 h-full">
+                            <h4 className="font-bold text-sm text-white peer-checked:text-indigo-300">Lokal in {marketName}</h4>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">Nur für Nutzer aus {marketName} sichtbar.</p>
                         </div>
                     </label>
                     <label className="cursor-pointer">
@@ -109,9 +109,9 @@ export function EditJobForm({ job }: { job: Job }) {
                             defaultChecked={job.reach === 'extended'}
                             className="peer sr-only"
                         />
-                        <div className="p-4 rounded-xl bg-slate-950/50 border border-white/10 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5">
+                        <div className="p-4 rounded-xl bg-slate-950/50 border border-white/10 peer-checked:bg-indigo-500/10 peer-checked:border-indigo-500/50 peer-checked:ring-1 peer-checked:ring-indigo-500/20 transition-all hover:bg-white/5 h-full relative overflow-hidden">
                             <h4 className="font-bold text-sm text-white peer-checked:text-indigo-300">Überregional</h4>
-                            <p className="text-xs text-slate-400 mt-1">Auch für Nutzer aus umliegenden Städten sichtbar.</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">Auch für Nutzer aus umliegenden Städten sichtbar.</p>
                         </div>
                     </label>
                 </div>

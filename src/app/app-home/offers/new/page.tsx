@@ -57,15 +57,22 @@ export default async function NewOfferPage() {
         }
     }
 
+    // Fetch market_name to dynamically display reach text
+    const { data: region } = await supabase.from("regions_live")
+        .select("display_name")
+        .eq("id", profile.market_id as string)
+        .single();
+    const marketName = region?.display_name || "deiner Stadt";
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6 max-w-2xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Neuen Job erstellen</h1>
-                <p className="text-slate-400">Suche nach Unterstützung in Rheinbach.</p>
+                <p className="text-slate-400">Suche nach Unterstützung in {marketName}.</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-                <CreateJobForm defaultLocation={defaultLocation} />
+                <CreateJobForm defaultLocation={defaultLocation} marketName={marketName} />
             </div>
         </div>
     );

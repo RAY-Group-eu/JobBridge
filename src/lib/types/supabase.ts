@@ -576,6 +576,11 @@ export type Database = {
           updated_at: string
           user_type: string | null
           avatar_url: string | null
+          lat: number | null
+          lng: number | null
+          street: string | null
+          house_number: string | null
+          zip: string | null
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -606,6 +611,11 @@ export type Database = {
           updated_at?: string
           user_type?: string | null
           avatar_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          street?: string | null
+          house_number?: string | null
+          zip?: string | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -636,6 +646,11 @@ export type Database = {
           updated_at?: string
           user_type?: string | null
           avatar_url?: string | null
+          lat?: number | null
+          lng?: number | null
+          street?: string | null
+          house_number?: string | null
+          zip?: string | null
         }
         Relationships: [
           {

@@ -658,3 +658,8 @@ END $$;
 -- Add updated_at column to jobs table
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now();
 
+-- -----------------------------------------------------------------------------
+-- Profile Location Extensions (Distance Tracking)
+-- -----------------------------------------------------------------------------
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lat FLOAT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lng FLOAT;

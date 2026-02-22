@@ -39,6 +39,13 @@ export default async function EditJobPage({
         );
     }
 
+    // Fetch market_name to dynamically display reach text
+    const { data: region } = await supabase.from("regions_live")
+        .select("display_name")
+        .eq("id", profile.market_id as string)
+        .single();
+    const marketName = region?.display_name || "deiner Stadt";
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6 max-w-2xl">
             <div className="mb-6">
@@ -50,7 +57,7 @@ export default async function EditJobPage({
             </div>
 
             <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 md:p-8 backdrop-blur-sm">
-                <EditJobForm job={job} />
+                <EditJobForm job={job} marketName={marketName} />
             </div>
         </div>
     );

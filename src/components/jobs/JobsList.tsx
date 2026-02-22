@@ -4,12 +4,13 @@ import { useState, useCallback, useMemo } from "react";
 import { JobCard } from "@/components/jobs/JobCard";
 import { JobsListSection } from "@/components/jobs/JobsListSection";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
-import { Briefcase, CheckCircle2, Clock, Filter, ListFilter } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, Filter, ListFilter, MapPin } from "lucide-react";
 import type { JobsListItem } from "@/lib/types/jobbridge";
 import { cn } from "@/lib/utils";
 
 interface JobsListProps {
-    activeJobs: JobsListItem[];
+    localActiveJobs: JobsListItem[];
+    extendedActiveJobs: JobsListItem[];
     waitlistedJobs: JobsListItem[];
     appliedJobs: JobsListItem[];
     isDemo: boolean;
@@ -17,7 +18,7 @@ interface JobsListProps {
     guardianStatus: string;
 }
 
-export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canApply, guardianStatus }: JobsListProps) {
+export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, appliedJobs, isDemo, canApply, guardianStatus }: JobsListProps) {
     const [selectedJob, setSelectedJob] = useState<JobsListItem | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'active' | 'waitlist' | 'applied'>('active');
@@ -107,9 +108,9 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
                     >
                         <Briefcase size={16} className={cn(activeTab === 'active' ? "text-indigo-400" : "text-slate-500")} />
                         Aktuell
-                        {activeJobs.length > 0 && (
+                        {(localActiveJobs.length + extendedActiveJobs.length) > 0 && (
                             <span className="bg-white/10 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full ml-1">
-                                {activeJobs.length}
+                                {localActiveJobs.length + extendedActiveJobs.length}
                             </span>
                         )}
                     </button>
@@ -165,20 +166,77 @@ export function JobsList({ activeJobs, waitlistedJobs, appliedJobs, isDemo, canA
             </div>
 
             <div className="space-y-16 pb-20">
-                {/* Active Jobs Section */}
+                {/* Active Jobs Section (Local + Extended) */}
                 <div className={cn("animate-in fade-in slide-in-from-bottom-4 duration-500", activeTab === 'active' ? "block" : "hidden")}>
-                    <JobsListSection
-                        title="Aktuelle Angebote"
-                        icon={Briefcase}
-                        colorClass="text-indigo-400"
-                        jobs={activeJobs}
-                        emptyMsg="Keine neuen Jobs verfügbar."
-                        isWhiteTitle={true}
-                        isDemo={isDemo}
-                        canApply={canApply}
-                        hideStatusLabel={true}
-                        onSelect={handleJobSelect}
-                    />
+                    {/* Local Jobs */}
+                    <div className="mb-12">
+                        <JobsListSection
+                            title="Aktuelle Angebote"
+                            icon={Briefcase}
+                            colorClass="text-indigo-400"
+                            jobs={localActiveJobs}
+                            emptyMsg={
+                                <div className="flex flex-col items-center justify-center space-y-4 py-8 px-4 animate-in fade-in duration-700">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full scale-110 pointer-events-none" />
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-white/[0.05] flex items-center justify-center shadow-xl relative z-10 text-indigo-400/80">
+                                            <Briefcase size={32} className="opacity-80" />
+                                        </div>
+                                    </div>
+                                    <div className="text-center space-y-2">
+                                        <h3 className="text-xl font-bold text-white tracking-tight">Aktuell keine lokalen Jobs</h3>
+                                        <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
+                                            {extendedActiveJobs.length > 0
+                                                ? "Aber gute Neuigkeiten! Entdecke unten spannende überregionale Angebote aus benachbarten Städten."
+                                                : "In deiner Stadt wird gerade keine Unterstützung gesucht. Schau später noch einmal vorbei!"}
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            isWhiteTitle={true}
+                            isDemo={isDemo}
+                            canApply={canApply}
+                            hideStatusLabel={true}
+                            onSelect={handleJobSelect}
+                        />
+                    </div>
+
+                    {/* Extended Jobs */}
+                    {extendedActiveJobs.length > 0 && (
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 fill-mode-both">
+                            {/* Premium Divider */}
+                            <div className="relative flex items-center justify-center my-12 mb-14">
+                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div className="w-full border-t border-white/[0.08]" />
+                                </div>
+                                <div className="absolute w-full flex justify-center">
+                                    <div className="w-1/2 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+                                </div>
+                                <div className="relative flex justify-center z-10">
+                                    <span className="bg-[#09090b] px-6 text-sm flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-pulse" />
+                                        <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300 tracking-wider uppercase text-xs">
+                                            Jobs aus anderen Regionen
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <JobsListSection
+                                title="Überregionale Angebote"
+                                icon={MapPin}
+                                colorClass="text-violet-400"
+                                jobs={extendedActiveJobs}
+                                emptyMsg=""
+                                isWhiteTitle={false}
+                                isDemo={isDemo}
+                                canApply={canApply}
+                                hideStatusLabel={true}
+                                isExtendedSection={true}
+                                onSelect={handleJobSelect}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Waitlist Section */}

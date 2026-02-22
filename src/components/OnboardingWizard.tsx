@@ -14,7 +14,7 @@ import { supabaseBrowser } from "@/lib/supabaseClient";
 import { useEmailResend } from "@/lib/hooks/useEmailResend";
 import { type AccountType, type OnboardingRole, type Profile, type ProviderKind } from "@/lib/types";
 import { BRAND_EMAIL } from "@/lib/constants";
-import { Sparkles, HandHeart, Building2 } from "lucide-react";
+import { Sparkles, HandHeart, Building2, AlertCircle, Mail } from "lucide-react";
 import { LocationStep } from "./onboarding/LocationStep";
 
 type Step = "location" | "welcome" | "mode" | "auth" | "email-confirm" | "role" | "profile" | "contact" | "summary";
@@ -70,6 +70,9 @@ export function OnboardingWizard({
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
+  // Password reset state
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   // If just verified, assume email is confirmed initially to show UI feedback
   const [emailConfirmed, setEmailConfirmed] = useState(isJustVerified);
   const [codeMessage, setCodeMessage] = useState<string | null>(null);
@@ -233,13 +236,36 @@ export function OnboardingWizard({
   const handleSignIn = async () => {
     setLoading(true);
     setError(null);
+    setResetSuccess(false);
     try {
-      await signInWithEmail(email, password);
+      const { data, error } = await signInWithEmail(email, password);
+      if (error) throw error;
       router.push(redirectTo || "/app-home");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Anmeldung fehlgeschlagen."));
+      setError(getErrorMessage(err, "Anmeldung fehlgeschlagen. Bitte überprüfe deine E-Mail und dein Passwort."));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError("Bitte gib deine E-Mail oben ein, um das Passwort zurückzusetzen.");
+      return;
+    }
+    setResettingPassword(true);
+    setError(null);
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+      const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/auth/update-password`,
+      });
+      if (error) throw error;
+      setResetSuccess(true);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Wir konnten leider keinen Link senden. Versuche es später nochmal."));
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -600,16 +626,87 @@ export function OnboardingWizard({
                       Schützt deinen Zugang.
                     </p>
                   </div>
-                  {error && (
-                    <div className="rounded-2xl border border-rose-400/50 bg-rose-500/20 px-5 py-4 text-rose-100">
-                      {error}
-                    </div>
-                  )}
+                  
+                  <AnimatePresence mode="wait">
+                    {resetSuccess ? (
+                      <motion.div
+                        key="success"
+                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, height: "auto", scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                        className="rounded-3xl border border-emerald-400/50 bg-emerald-500/10 p-6 overflow-hidden relative group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="flex flex-col items-center text-center gap-3 relative z-10">
+                          <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                            <Mail className="w-6 h-6 text-emerald-300" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-semibold text-emerald-100 mb-1">E-Mail gesendet!</h4>
+                            <p className="text-sm text-emerald-200/80">
+                              Wir haben einen Link zum Zurücksetzen deines Passworts an <strong className="text-emerald-100">{email}</strong> geschickt.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : error && mode === "signin" ? (
+                      <motion.div
+                        key="error-premium"
+                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, height: "auto", scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                        className="rounded-3xl border border-rose-500/30 bg-[#120808]/80 backdrop-blur-md p-6 overflow-hidden shadow-[0_8px_32px_rgba(225,29,72,0.15)] relative group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="flex flex-col gap-4 relative z-10">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1 w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30 flex-shrink-0">
+                              <AlertCircle className="w-5 h-5 text-rose-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-rose-100 mb-1">Anmeldung fehlgeschlagen</h4>
+                              <p className="text-sm text-rose-200/80">
+                                Die von dir eingegebene Kombination ist nicht korrekt. Was möchtest du tun?
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 mt-2">
+                            <ButtonPrimary 
+                              type="button"
+                              onClick={handleResetPassword} 
+                              loading={resettingPassword}
+                              className="w-full bg-rose-600 hover:bg-rose-500 text-white border-rose-500/50 shadow-[0_0_20px_rgba(225,29,72,0.3)] transition-all hover:shadow-[0_0_30px_rgba(225,29,72,0.5)]"
+                            >
+                              Passwort Link anfordern
+                            </ButtonPrimary>
+                            <a 
+                              href={`mailto:${CONTACT_EMAIL}?subject=Hilfe bei der Anmeldung (JobBridge)&body=Hallo Support-Team,%0D%0A%0D%0Aich kann mich leider nicht anmelden.%0D%0AE-Mail: ${email}%0D%0A%0D%0ABitte helft mir weiter.`}
+                              className="w-full h-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/80 font-medium hover:bg-white/10 hover:text-white transition-all text-sm"
+                            >
+                              Support kontaktieren
+                            </a>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : error ? (
+                      <motion.div
+                        key="error-standard"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        <div className="rounded-2xl border border-rose-400/50 bg-rose-500/20 px-5 py-4 text-rose-100">
+                          {error}
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+
                   <div className="flex gap-4">
-                    <ButtonSecondary onClick={prevStep} className="flex-1">
+                    <ButtonSecondary disabled={resettingPassword} onClick={prevStep} className="flex-1">
                       Zurück
                     </ButtonSecondary>
-                    <ButtonPrimary type="submit" className="flex-1" loading={loading}>
+                    <ButtonPrimary disabled={resettingPassword} type="submit" className="flex-1" loading={loading}>
                       {mode === "signup" ? "Registrieren" : "Anmelden"}
                     </ButtonPrimary>
                   </div>

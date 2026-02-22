@@ -36,6 +36,8 @@ export type JobsListItem = {
   created_at: string;
   market_id: string | null;
   public_location_label: string | null;
+  public_lat?: number | null;
+  public_lng?: number | null;
   wage_hourly: number | null;
   reach?: 'internal_rheinbach' | 'extended' | null;
   // Optional enrichments (separate lookup).

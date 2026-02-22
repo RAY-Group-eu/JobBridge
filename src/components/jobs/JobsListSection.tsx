@@ -8,12 +8,13 @@ interface SectionProps {
     icon: any;
     colorClass: string;
     jobs: JobsListItem[];
-    emptyMsg: string;
+    emptyMsg: React.ReactNode;
     hiddenOnMobile?: boolean;
     isWhiteTitle?: boolean;
     isDemo: boolean;
     canApply: boolean;
     hideStatusLabel?: boolean;
+    isExtendedSection?: boolean;
     onSelect: (job: JobsListItem) => void;
 }
 
@@ -28,6 +29,7 @@ export const JobsListSection = memo(function JobsListSection({
     isDemo,
     canApply,
     hideStatusLabel,
+    isExtendedSection,
     onSelect
 }: SectionProps) {
     return (
@@ -44,8 +46,8 @@ export const JobsListSection = memo(function JobsListSection({
 
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
                 {jobs.length === 0 ? (
-                    <div className="col-span-full py-12 text-center rounded-2xl border border-dashed border-white/5 bg-white/[0.02]">
-                        <p className="text-slate-500 italic">{emptyMsg}</p>
+                    <div className="col-span-full py-12 text-center rounded-2xl border border-dashed border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent">
+                        <div className="text-slate-400">{emptyMsg}</div>
                     </div>
                 ) : (
                     jobs.map(job => (
@@ -56,6 +58,7 @@ export const JobsListSection = memo(function JobsListSection({
                             isApplied={title === 'Bereits Beworben'}
                             isLocked={!canApply}
                             hideStatusLabel={hideStatusLabel}
+                            isCrossRegionalBadge={isExtendedSection}
                             onSelect={onSelect}
                         />
                     ))

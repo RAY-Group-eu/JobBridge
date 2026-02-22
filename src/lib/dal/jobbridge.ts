@@ -5,6 +5,19 @@ import type { EffectiveViewSnapshot, ErrorInfo, JobsListItem, ApplicationRow, Ap
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
+// Haversine formula for calculating distance between two coordinates in km
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Shared helpers
 // ────────────────────────────────────────────────────────────────────
@@ -163,9 +176,12 @@ function toJobsListItem(row: Database["public"]["Tables"]["jobs"]["Row"] | Datab
     created_at: String(row.created_at ?? ""),
     market_id: row.market_id ?? null,
     public_location_label: row.public_location_label ?? null,
+    public_lat: row.public_lat ? Number(row.public_lat) : null,
+    public_lng: row.public_lng ? Number(row.public_lng) : null,
     wage_hourly: row.wage_hourly != null ? Number(row.wage_hourly) : null,
     category: row.category ?? "",
     address_reveal_policy: row.address_reveal_policy ?? "after_apply",
+    reach: (row as any).reach ?? 'internal_rheinbach',
     is_applied: false,
   };
 }
@@ -228,6 +244,21 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     return q.range(offset, offset + limit - 1);
   };
 
+  // Fetch user coordinates for distance calculation
+  let userLat: number | null = null;
+  let userLng: number | null = null;
+  if (params.userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("lat, lng")
+      .eq("id", params.userId)
+      .single();
+    if (profile) {
+      userLat = profile.lat ?? null;
+      userLng = profile.lng ?? null;
+    }
+  }
+
   // ── DEMO ──────────────────────────────────────────────────────────
   if (params.view.source === "demo") {
     let q = supabase.from("demo_jobs").select("*");
@@ -259,6 +290,13 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
     } else {
       q = q.eq("status", status);
     }
+    // Fetch local jobs OR extended jobs from other regions
+    if (params.marketId) {
+      q = q.or(`market_id.eq.${params.marketId},reach.eq.extended`);
+    } else {
+      // Fallback if user has no market_id: show everything for now or just extended? 
+      // Safest is to just let it show everything if no market_id is set.
+    }
   }
   if (params.mode === "my_jobs") q = q.eq("posted_by", params.userId);
   q = q.order("created_at", { ascending: false });
@@ -269,11 +307,17 @@ export async function fetchJobs(params: FetchJobsParams): Promise<Result<JobsLis
 
   let items = (data ?? []).map((row) => {
     const appData = appliedJobIds.get(row.id);
+    let distance_km = null;
+    if (userLat != null && userLng != null && row.public_lat != null && row.public_lng != null) {
+      distance_km = calculateDistance(userLat, userLng, Number(row.public_lat), Number(row.public_lng));
+    }
+
     return {
       ...toJobsListItem(row),
       is_applied: !!appData,
       application_id: appData?.id || null,
-      application_status: appData?.status || null
+      application_status: appData?.status || null,
+      distance_km
     };
   });
 
