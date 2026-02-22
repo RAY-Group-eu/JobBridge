@@ -736,7 +736,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                     PLZ & Ort
                                                 </label>
                                                 <div className="flex gap-2">
-                                                    <div className="relative w-28 group/zip">
+                                                    <div className="relative w-36 group/zip">
                                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
                                                             <LockKeyhole size={16} />
                                                         </div>

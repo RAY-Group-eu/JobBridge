@@ -30,6 +30,7 @@ export function LocationAutocomplete({ onSelect, defaultValue = "", className, p
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Close on click outside
   useEffect(() => {
@@ -111,6 +112,7 @@ export function LocationAutocomplete({ onSelect, defaultValue = "", className, p
     setQuery(label);
     onSelect(details);
     setIsOpen(false);
+    inputRef.current?.blur();
   };
 
   return (
@@ -120,6 +122,7 @@ export function LocationAutocomplete({ onSelect, defaultValue = "", className, p
           {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => {
