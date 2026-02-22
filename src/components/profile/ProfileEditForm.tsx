@@ -705,9 +705,6 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                 <Search size={12} /> Adresse suchen
                                             </label>
                                             <div className="relative group/search z-20">
-                                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-sky-500 pointer-events-none z-10">
-                                                    <MapPin size={18} />
-                                                </div>
                                                 <LocationAutocomplete
                                                     onSelect={handleLocationSelect}
                                                     placeholder="Straße und Ort eingeben..."
