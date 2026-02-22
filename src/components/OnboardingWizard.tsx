@@ -14,8 +14,9 @@ import { supabaseBrowser } from "@/lib/supabaseClient";
 import { useEmailResend } from "@/lib/hooks/useEmailResend";
 import { type AccountType, type OnboardingRole, type Profile, type ProviderKind } from "@/lib/types";
 import { BRAND_EMAIL } from "@/lib/constants";
-import { Sparkles, HandHeart, Building2, AlertCircle, Mail } from "lucide-react";
+import { Sparkles, HandHeart, Building2, AlertCircle, Mail, UserX, KeyRound } from "lucide-react";
 import { LocationStep } from "./onboarding/LocationStep";
+import { checkEmailExists } from "@/lib/authServerActions";
 
 type Step = "location" | "welcome" | "mode" | "auth" | "email-confirm" | "role" | "profile" | "contact" | "summary";
 
@@ -67,7 +68,8 @@ export function OnboardingWizard({
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<"account_not_found" | "wrong_password" | "general" | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   // Password reset state
@@ -235,26 +237,49 @@ export function OnboardingWizard({
 
   const handleSignIn = async () => {
     setLoading(true);
-    setError(null);
+    setErrorType(null);
+    setErrorMsg(null);
     setResetSuccess(false);
+
     try {
-      const { data, error } = await signInWithEmail(email, password);
-      if (error) throw error;
+      // 1. Check if email exists
+      const emailExists = await checkEmailExists(email);
+
+      if (!emailExists) {
+        setErrorType("account_not_found");
+        setErrorMsg("Dieser Account existiert nicht. Möchtest du stattdessen ein neues Konto erstellen?");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Email exists, try password sign in
+      const { error } = await signInWithEmail(email, password);
+
+      if (error) {
+        setErrorType("wrong_password");
+        setErrorMsg("Passwort falsch. Die Anmeldedaten stimmen nicht.");
+        setLoading(false);
+        return;
+      }
+
       router.push(redirectTo || "/app-home");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Anmeldung fehlgeschlagen. Bitte überprüfe deine E-Mail und dein Passwort."));
+      setErrorType("general");
+      setErrorMsg(getErrorMessage(err, "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es noch einmal."));
     } finally {
-      setLoading(false);
+      if (!errorType) setLoading(false);
     }
   };
 
   const handleResetPassword = async () => {
     if (!email) {
-      setError("Bitte gib deine E-Mail oben ein, um das Passwort zurückzusetzen.");
+      setErrorType("general");
+      setErrorMsg("Bitte gib deine E-Mail oben ein, um das Passwort zurückzusetzen.");
       return;
     }
     setResettingPassword(true);
-    setError(null);
+    setErrorType(null);
+    setErrorMsg(null);
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "");
       const { error } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
@@ -263,7 +288,8 @@ export function OnboardingWizard({
       if (error) throw error;
       setResetSuccess(true);
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Wir konnten leider keinen Link senden. Versuche es später nochmal."));
+      setErrorType("general");
+      setErrorMsg(getErrorMessage(err, "Wir konnten leider keinen Link senden. Versuche es später nochmal."));
     } finally {
       setResettingPassword(false);
     }
@@ -271,7 +297,8 @@ export function OnboardingWizard({
 
   const handleSignUp = async () => {
     setLoading(true);
-    setError(null);
+    setErrorType(null);
+    setErrorMsg(null);
     try {
       await signUpWithEmail(email, password, {
         city: profileData.region,
@@ -280,7 +307,8 @@ export function OnboardingWizard({
       });
       setStep("email-confirm");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Registrierung fehlgeschlagen."));
+      setErrorType("general");
+      setErrorMsg(getErrorMessage(err, "Registrierung fehlgeschlagen."));
     } finally {
       setLoading(false);
     }
@@ -307,7 +335,8 @@ export function OnboardingWizard({
 
   const handleCompleteOnboarding = async () => {
     setIsSaving(true);
-    setError(null);
+    setErrorType(null);
+    setErrorMsg(null);
 
     // Lazy import or assume it handles it? Next.js server actions can be imported.
     // I will need to make sure the import is present at the top of the file.
@@ -337,9 +366,8 @@ export function OnboardingWizard({
 
       router.push(redirectTo || "/app-home");
     } catch (err: unknown) {
-      setError(
-        getErrorMessage(err, "Speichern fehlgeschlagen. Bitte versuche es erneut.")
-      );
+      setErrorType("general");
+      setErrorMsg(getErrorMessage(err, "Speichern fehlgeschlagen. Bitte versuche es erneut."));
     } finally {
       setIsSaving(false);
     }
@@ -367,13 +395,15 @@ export function OnboardingWizard({
       handleEmailConfirmation();
     } else if (step === "role") {
       if (!profileData.role) {
-        setError("Bitte wähle eine Rolle aus.");
+        setErrorType("general");
+        setErrorMsg("Bitte wähle eine Rolle aus.");
         return;
       }
       setStep("profile");
     } else if (step === "profile") {
       if (!profileData.fullName || !profileData.birthdate) {
-        setError("Bitte fülle alle Felder aus.");
+        setErrorType("general");
+        setErrorMsg("Bitte fülle alle Felder aus.");
         return;
       }
       if (profileData.role === "company") {
@@ -406,7 +436,8 @@ export function OnboardingWizard({
     } else if (step === "summary") {
       setStep("profile");
     }
-    setError(null);
+    setErrorType(null);
+    setErrorMsg(null);
   };
 
   return (
@@ -486,7 +517,8 @@ export function OnboardingWizard({
                   <ChoiceTile
                     onClick={() => {
                       setMode("signup");
-                      setError(null);
+                      setErrorType(null);
+                      setErrorMsg(null);
                     }}
                     selected={mode === "signup"}
                   >
@@ -498,7 +530,8 @@ export function OnboardingWizard({
                   <ChoiceTile
                     onClick={() => {
                       setMode("signin");
-                      setError(null);
+                      setErrorType(null);
+                      setErrorMsg(null);
                     }}
                     selected={mode === "signin"}
                   >
@@ -626,7 +659,7 @@ export function OnboardingWizard({
                       Schützt deinen Zugang.
                     </p>
                   </div>
-                  
+
                   <AnimatePresence mode="wait">
                     {resetSuccess ? (
                       <motion.div
@@ -638,7 +671,7 @@ export function OnboardingWizard({
                       >
                         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="flex flex-col items-center text-center gap-3 relative z-10">
-                          <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                          <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                             <Mail className="w-6 h-6 text-emerald-300" />
                           </div>
                           <div>
@@ -649,9 +682,9 @@ export function OnboardingWizard({
                           </div>
                         </div>
                       </motion.div>
-                    ) : error && mode === "signin" ? (
+                    ) : errorType === "wrong_password" && mode === "signin" ? (
                       <motion.div
-                        key="error-premium"
+                        key="error-wrong-password"
                         initial={{ opacity: 0, height: 0, scale: 0.95 }}
                         animate={{ opacity: 1, height: "auto", scale: 1 }}
                         exit={{ opacity: 0, height: 0, scale: 0.95 }}
@@ -659,28 +692,28 @@ export function OnboardingWizard({
                       >
                         <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="flex flex-col gap-4 relative z-10">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30 flex-shrink-0">
-                              <AlertCircle className="w-5 h-5 text-rose-400" />
+                          <div className="flex items-start gap-4">
+                            <div className="mt-1 w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30 flex-shrink-0 shadow-[0_0_15px_rgba(225,29,72,0.2)]">
+                              <KeyRound className="w-6 h-6 text-rose-400" />
                             </div>
                             <div>
-                              <h4 className="text-base font-semibold text-rose-100 mb-1">Anmeldung fehlgeschlagen</h4>
-                              <p className="text-sm text-rose-200/80">
-                                Die von dir eingegebene Kombination ist nicht korrekt. Was möchtest du tun?
+                              <h4 className="text-base font-semibold text-rose-100 mb-1">Passwort falsch</h4>
+                              <p className="text-sm text-rose-200/80 leading-relaxed">
+                                {errorMsg}
                               </p>
                             </div>
                           </div>
-                          <div className="flex flex-col gap-2 mt-2">
-                            <ButtonPrimary 
+                          <div className="flex flex-col gap-2 mt-3">
+                            <ButtonPrimary
                               type="button"
-                              onClick={handleResetPassword} 
+                              onClick={handleResetPassword}
                               loading={resettingPassword}
-                              className="w-full bg-rose-600 hover:bg-rose-500 text-white border-rose-500/50 shadow-[0_0_20px_rgba(225,29,72,0.3)] transition-all hover:shadow-[0_0_30px_rgba(225,29,72,0.5)]"
+                              className="w-full bg-rose-600 hover:bg-rose-500 text-white border-rose-500/50 shadow-[0_0_20px_rgba(225,29,72,0.3)] transition-all hover:shadow-[0_0_30px_rgba(225,29,72,0.5)] h-12"
                             >
                               Passwort Link anfordern
                             </ButtonPrimary>
-                            <a 
-                              href={`mailto:${CONTACT_EMAIL}?subject=Hilfe bei der Anmeldung (JobBridge)&body=Hallo Support-Team,%0D%0A%0D%0Aich kann mich leider nicht anmelden.%0D%0AE-Mail: ${email}%0D%0A%0D%0ABitte helft mir weiter.`}
+                            <a
+                              href={`mailto:support@jobbridge.app?subject=Hilfe bei Passwort (JobBridge)&body=Hallo Support-Team,%0D%0A%0D%0Amein Passwort für ${email} wird nicht akzeptiert.%0D%0A%0D%0ABitte helft mir weiter.`}
                               className="w-full h-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/80 font-medium hover:bg-white/10 hover:text-white transition-all text-sm"
                             >
                               Support kontaktieren
@@ -688,15 +721,57 @@ export function OnboardingWizard({
                           </div>
                         </div>
                       </motion.div>
-                    ) : error ? (
+                    ) : errorType === "account_not_found" && mode === "signin" ? (
                       <motion.div
-                        key="error-standard"
+                        key="error-not-found"
+                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, height: "auto", scale: 1 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                        className="rounded-3xl border border-amber-500/30 bg-[#140D05]/80 backdrop-blur-md p-6 overflow-hidden shadow-[0_8px_32px_rgba(245,158,11,0.1)] relative group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="flex flex-col gap-4 relative z-10">
+                          <div className="flex items-start gap-4">
+                            <div className="mt-1 w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30 flex-shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                              <UserX className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-amber-100 mb-1">Account nicht gefunden</h4>
+                              <p className="text-sm text-amber-200/80 leading-relaxed">
+                                {errorMsg}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 mt-3">
+                            <ButtonPrimary
+                              type="button"
+                              onClick={() => {
+                                setMode("signup");
+                                setErrorType(null);
+                                setErrorMsg(null);
+                              }}
+                              className="w-full bg-amber-600 hover:bg-amber-500 text-white border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] h-12"
+                            >
+                              Jetzt registrieren
+                            </ButtonPrimary>
+                            <a
+                              href={`mailto:support@jobbridge.app?subject=Account nicht gefunden (JobBridge)&body=Hallo Support-Team,%0D%0A%0D%0Aich versuche mich mit ${email} anzumelden, aber der Account existiert angeblich nicht.%0D%0A%0D%0ABitte helft mir weiter.`}
+                              className="w-full h-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/80 font-medium hover:bg-white/10 hover:text-white transition-all text-sm"
+                            >
+                              Support kontaktieren
+                            </a>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : errorType === "general" ? (
+                      <motion.div
+                        key="error-general"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                       >
                         <div className="rounded-2xl border border-rose-400/50 bg-rose-500/20 px-5 py-4 text-rose-100">
-                          {error}
+                          {errorMsg}
                         </div>
                       </motion.div>
                     ) : null}
