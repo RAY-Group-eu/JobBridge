@@ -203,24 +203,7 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
 
                     {/* Extended Jobs */}
                     {extendedActiveJobs.length > 0 && (
-                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 fill-mode-both">
-                            {/* Premium Divider */}
-                            <div className="relative flex items-center justify-center my-12 mb-14">
-                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                    <div className="w-full border-t border-white/[0.08]" />
-                                </div>
-                                <div className="absolute w-full flex justify-center">
-                                    <div className="w-1/2 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
-                                </div>
-                                <div className="relative flex justify-center z-10">
-                                    <span className="bg-[#09090b] px-6 text-sm flex items-center gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-pulse" />
-                                        <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300 tracking-wider uppercase text-xs">
-                                            Jobs aus anderen Regionen
-                                        </span>
-                                    </span>
-                                </div>
-                            </div>
+                        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 fill-mode-both mt-12">
 
                             <JobsListSection
                                 title="Überregionale Angebote"

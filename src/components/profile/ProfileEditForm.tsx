@@ -688,11 +688,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                         <div className="space-y-1 flex-1">
                                             <div className="flex items-center gap-3">
                                                 <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Wohnort & Distanz</h3>
-                                                {lat && lng && (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                                        <ShieldCheck size={10} /> Aktiv
-                                                    </span>
-                                                )}
+                                                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Wohnort & Distanz</h3>
                                             </div>
                                             <p className="text-slate-400 text-sm font-medium">Dein Wohnort wird niemals öffentlich geteilt, sondern nur zur Entfernungsberechnung (z.B. "5 km entfernt") für Jobs genutzt.</p>
                                         </div>
@@ -740,12 +736,17 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                     PLZ & Ort
                                                 </label>
                                                 <div className="flex gap-2">
-                                                    <input
-                                                        value={zip}
-                                                        onChange={(e) => setZip(e.target.value)}
-                                                        placeholder="PLZ"
-                                                        className="w-24 h-14 rounded-2xl bg-[#0F0F12] border-2 border-transparent px-5 text-slate-200 placeholder:text-slate-700 focus:outline-none focus:bg-[#121216] focus:border-sky-500/20 transition-all font-medium text-center"
-                                                    />
+                                                    <div className="relative w-28 group/zip">
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
+                                                            <LockKeyhole size={16} />
+                                                        </div>
+                                                        <input
+                                                            value={zip}
+                                                            disabled
+                                                            title="Deine PLZ ist fest mit deinem Account verknüpft und kann nicht geändert werden."
+                                                            className="w-full h-14 rounded-2xl bg-[#0F0F12]/50 border-2 border-transparent px-5 pr-10 text-slate-400 cursor-not-allowed font-medium text-center"
+                                                        />
+                                                    </div>
                                                     <div className="relative w-full group/city">
                                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">
                                                             <LockKeyhole size={16} />
