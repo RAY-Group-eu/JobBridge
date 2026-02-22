@@ -147,7 +147,7 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
 
     const handleLocationSelect = (loc: LocationDetails) => {
         setStreet(loc.address_line1);
-        setCity(loc.city);
+        // User city is immutable and should never be overwritten by the autocomplete
         setZip(loc.postcode || "");
         setLat(loc.lat || null);
         setLng(loc.lon || null);
@@ -746,12 +746,17 @@ export function ProfileEditForm({ profile, className, isStaff = false, guardians
                                                         placeholder="PLZ"
                                                         className="w-24 h-14 rounded-2xl bg-[#0F0F12] border-2 border-transparent px-5 text-slate-200 placeholder:text-slate-700 focus:outline-none focus:bg-[#121216] focus:border-sky-500/20 transition-all font-medium text-center"
                                                     />
-                                                    <input
-                                                        value={city}
-                                                        onChange={(e) => setCity(e.target.value)}
-                                                        placeholder="Stadt"
-                                                        className="w-full h-14 rounded-2xl bg-[#0F0F12] border-2 border-transparent px-5 text-slate-200 placeholder:text-slate-700 focus:outline-none focus:bg-[#121216] focus:border-sky-500/20 transition-all font-medium"
-                                                    />
+                                                    <div className="relative w-full group/city">
+                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">
+                                                            <LockKeyhole size={16} />
+                                                        </div>
+                                                        <input
+                                                            value={city}
+                                                            disabled
+                                                            title="Deine Stadt ist fest mit deinem Account verknüpft und kann nicht geändert werden."
+                                                            className="w-full h-14 rounded-2xl bg-[#0F0F12]/50 border-2 border-transparent px-5 pr-12 text-slate-400 cursor-not-allowed font-medium"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
