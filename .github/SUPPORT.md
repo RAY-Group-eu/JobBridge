@@ -1,36 +1,40 @@
-# Support Policy
+<div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5e9,100:020617&height=200&section=header&text=Support%20Center&fontSize=50&fontAlignY=35&animation=twinkling&fontColor=ffffff" width="100%" alt="Support Header" />
+</div>
 
-Thank you for using or evaluating JobBridge! We want to ensure you have a positive experience. Here is how you can get support for the JobBridge Web Platform.
+# 🤝 Support Center
 
-## 🤝 Community Support
-
-For general questions, brainstorming, or sharing feedback, please use our **GitHub Discussions**. This is the best place for:
-*   "How-to" questions
-*   Feature requests
-*   Conceptual discussions
-*   General feedback
-
-👉 [Join the Discussions](https://github.com/RAY-Group-eu/JobBridge/discussions)
-
-## 🐛 Bug Reporting
-
-If you encounter a technical bug (unexpected behavior, crashes, UI glitches), please check the existing issues first. If it's a new bug, feel free to open a formal issue.
-
-👉 [Open an Issue](https://github.com/RAY-Group-eu/JobBridge/issues/new)
-
-## 🛡️ Security Vulnerabilities
-
-**Critical Security Note:** If you find a security flaw or vulnerability (especially regarding user data or system integrity), please **do not** report it via a public issue. 
-
-Refer to our [Security Policy](.github/SECURITY.md) for private reporting instructions.
-
-## 💼 Official / Business Inquiries
-
-For official inquiries, business collaborations, or if you are an authorized developer requiring staging access, please contact the maintainer directly or visit our website:
-
-*   **Website:** [https://www.jobbridge.app](https://www.jobbridge.app)
-*   **Maintainer Email:** [mail@r-yalcin.de](mailto:mail@r-yalcin.de)
+Welcome to the JobBridge Support Center. Whether you are a seeker, a provider, or a developer, we are here to help you get the most out of the platform.
 
 ---
 
-Please note that as JobBridge is a proprietary project, official technical support for external users is provided on a best-effort basis and does not include guaranteed response times unless otherwise agreed upon.
+## 💬 Community Support
+For general questions, "how-to" guides, or sharing feedback with other users, our GitHub Discussions is the place to be.
+
+👉 [**Join the Discussions**](https://github.com/JobBridge-app/app/discussions)
+
+---
+
+## 🪲 Technical Support (Bugs)
+If you encounter a technical issue or crash, please check if it's already known. If not, open a bug report with as much detail as possible.
+
+👉 [**Report a Bug**](https://github.com/JobBridge-app/app/issues/new)
+
+---
+
+## 🛡️ Security Support
+**Critical Security Note:** If you find a vulnerability regarding user data or system integrity, please **do not** use public channels.
+
+Refer to our [Security Policy](.github/SECURITY.md) or email us directly at **[rezan@jobbridge.app](mailto:rezan@jobbridge.app)**.
+
+---
+
+## 💼 Business & Official Inquiries
+For official partnership inquiries, media requests, or authorized developer access, please visit our website or contact the maintainer.
+
+*   **Website:** [jobbridge.app](https://www.jobbridge.app)
+*   **Direct Email:** [rezan@jobbridge.app](mailto:rezan@jobbridge.app)
+
+<div align="center">
+  <sub>© 2026 JobBridge | Sicher • Lokal • Fair</sub>
+</div>

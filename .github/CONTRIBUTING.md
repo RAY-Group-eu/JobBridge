@@ -1,44 +1,48 @@
-# Contributing to JobBridge
+<div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5e9,100:020617&height=200&section=header&text=Contributing&fontSize=50&fontAlignY=35&animation=twinkling&fontColor=ffffff" width="100%" alt="Contributing Header" />
+</div>
 
-First off, thank you for showing interest in JobBridge! We value the community and are excited to have you here.
+# 🚀 Contributing to JobBridge
 
-## Proprietary Software Notice
-
-> [!IMPORTANT]
-> **JobBridge is proprietary software.** 
-> All rights are reserved by Rezan Aaron Yalçin. While this repository is public for transparency and evaluation purposes, it is not an open-source project in the traditional sense. 
-
-Due to the sensitive nature of the project (security of minors, TrustScore algorithms, etc.), we currently **do not accept external code contributions (Pull Requests)** unless explicitly requested or pre-arranged with the maintainers.
-
-## How You Can Contribute
-
-Even though code contributions are restricted, you can still help make JobBridge better!
-
-### 1. Reporting Bugs
-We utilize GitHub Issues to track bugs. Before opening a new issue, please search existing issues to see if it has already been reported.
-
-**When reporting a bug, please include:**
-* A clear, descriptive title.
-* Steps to reproduce the behavior.
-* Expected vs. actual results.
-* Screenshots or screen recordings (if applicable).
-* Technical details (browser version, OS, etc.).
-
-**Security Vulnerabilities:**
-If you discover a security vulnerability, please **do not** open a public issue. Refer to our [Security Policy](.github/SECURITY.md) for instructions on how to report it privately.
-
-### 2. Suggesting Enhancements
-Have an idea for a new feature? We’d love to hear it! Please use the [GitHub Discussions](https://github.com/RAY-Group-eu/JobBridge/discussions) tab to share your ideas and feedback. This allows the community to discuss and refine concepts together.
-
-### 3. Feedback and Questions
-For general questions or feedback, please head over to our [Discussions](https://github.com/RAY-Group-eu/JobBridge/discussions).
-
-## Code of Conduct
-By participating in this project, you agree to abide by our [Code of Conduct](.github/CODE_OF_CONDUCT.md). Please be respectful and kind to everyone in the community.
-
-## Legal
-By suggesting ideas, feedback, or any other content to this project, you agree to grant the Licensor a perpetual, worldwide, irrevocable, royalty-free right to use and incorporate such feedback without restriction or compensation, as outlined in our [LICENSE](LICENSE).
+First off, thank you for showing interest in JobBridge! We value our community and appreciate your support in making the platform better.
 
 ---
 
-Thank you for being part of the JobBridge journey!
+## 🔒 Proprietary Software Notice
+
+> [!IMPORTANT]
+> **JobBridge is proprietary software.**
+> All rights are reserved by Rezan Aaron Yalçin. This repository is public for transparency and portfolio evaluation. 
+
+Due to strict security requirements (protection of minors, TrustScore integrity), we **do not accept external code contributions (Pull Requests)** at this time. Unauthorized cloning or distribution is prohibited under the [license](license).
+
+---
+
+## 🛠️ How You Can Help
+
+Even without code contributions, you can play a vital role:
+
+### 1. Reporting Bugs
+Found a glitch? Please open a clean Issue with:
+*   Steps to reproduce
+*   Expected vs. Actual behavior
+*   Screenshots/Videos if possible
+
+👉 [Open a Bug Report](https://github.com/JobBridge-app/app/issues/new)
+
+### 2. Sharing Ideas
+Have a feature request or feedback? Use our Discussions tab to brainstorm with the community.
+
+👉 [Join the Discussions](https://github.com/JobBridge-app/app/discussions)
+
+### 3. Security
+If you find a security vulnerability, please **do not** post it publicly. See our [Security Policy](.github/SECURITY.md).
+
+---
+
+## ⚖️ Legal & Feedback
+By providing feedback or suggestions, you grant the Licensor a perpetual, worldwide, irrevocable, royalty-free right to use and incorporate such feedback without restriction.
+
+<div align="center">
+  <sub>© 2026 JobBridge | Sicher • Lokal • Fair</sub>
+</div>
