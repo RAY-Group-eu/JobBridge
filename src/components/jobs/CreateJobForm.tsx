@@ -177,15 +177,11 @@ export function CreateJobForm({ defaultLocation, marketName }: { defaultLocation
                                         if (!draft || !draft.paymentType) {
                                             setPaymentType(category.defaultPaymentType);
                                         }
-                                        // Cinematic Auto-Scroll after animation starts
-                                        setTimeout(() => {
-                                            titleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                                        }, 150);
                                     }}
                                     className={cn(
                                         "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden",
                                         isSelected
-                                            ? "bg-indigo-500/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10 scale-[1.02]"
+                                            ? "bg-indigo-500/10 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/50"
                                             : "bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10"
                                     )}
                                 >
@@ -194,10 +190,10 @@ export function CreateJobForm({ defaultLocation, marketName }: { defaultLocation
                                     )}
                                     <motion.div
                                         animate={{
-                                            scale: isSelected ? 1.15 : 1,
-                                            rotate: isSelected ? -5 : 0
+                                            scale: isSelected ? 1.1 : 1,
+                                            y: isSelected ? -2 : 0
                                         }}
-                                        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                     >
                                         <Icon
                                             size={28}
