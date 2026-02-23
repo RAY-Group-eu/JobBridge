@@ -262,7 +262,7 @@ export function OnboardingWizard({
         return;
       }
 
-      router.push(redirectTo || "/app-home");
+      window.location.href = redirectTo || "/app-home";
     } catch (err: unknown) {
       setErrorType("general");
       setErrorMsg(getErrorMessage(err, "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es noch einmal."));
@@ -364,7 +364,7 @@ export function OnboardingWizard({
         throw new Error(result.error);
       }
 
-      router.push(redirectTo || "/app-home");
+      window.location.href = redirectTo || "/app-home";
     } catch (err: unknown) {
       setErrorType("general");
       setErrorMsg(getErrorMessage(err, "Speichern fehlgeschlagen. Bitte versuche es erneut."));
