@@ -6,7 +6,7 @@ import { JobDetailModal } from "@/components/jobs/JobDetailModal";
 import { Briefcase, CheckCircle2, Clock, ListFilter, MapPin } from "lucide-react";
 import type { JobsListItem } from "@/lib/types/jobbridge";
 import { cn } from "@/lib/utils";
-import { JobFilterSortPanel, DEFAULT_FILTER_STATE } from "@/components/jobs/JobFilterSortPanel";
+import { JobFilterSortPanel, DEFAULT_FILTER_STATE, DEFAULT_SORT_OPTION, SORT_OPTIONS } from "@/components/jobs/JobFilterSortPanel";
 import type { SortOption, FilterState } from "@/components/jobs/JobFilterSortPanel";
 
 interface JobsListProps {
@@ -68,7 +68,11 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
     const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
 
     const activeFilterCount = (filterState.categories.length > 0 ? 1 : 0) + (filterState.maxDistanceKm !== null ? 1 : 0);
-    const hasActiveFilters = activeFilterCount > 0;
+    const isNonDefaultSort = sortOption !== DEFAULT_SORT_OPTION;
+    const hasChanges = activeFilterCount > 0 || isNonDefaultSort;
+
+    // Label of current sort (shown on filter button when non-default)
+    const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortOption)?.label ?? "";
 
     const handleJobSelect = useCallback((job: JobsListItem) => {
         setSelectedJob(job);
@@ -144,14 +148,14 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
                         onClick={() => setShowFilterPanel(true)}
                         className={cn(
                             "relative h-full aspect-square flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all shrink-0 ml-0.5",
-                            (showFilterPanel || hasActiveFilters) && "text-indigo-400 bg-white/5"
+                            (showFilterPanel || hasChanges) && "text-indigo-400 bg-white/5"
                         )}
                         style={{ height: '36px', width: '36px' }}
                     >
                         <ListFilter size={18} />
-                        {activeFilterCount > 0 && (
+                        {(activeFilterCount > 0 || isNonDefaultSort) && (
                             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex items-center justify-center">
-                                {activeFilterCount}
+                                {activeFilterCount + (isNonDefaultSort ? 1 : 0)}
                             </span>
                         )}
                     </button>
@@ -221,15 +225,19 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
                     className={cn(
                         "relative ml-4 py-2 px-3 sm:px-4 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2 whitespace-nowrap border border-transparent hover:border-white/10",
                         showFilterPanel && "bg-white/10 text-indigo-400 border-indigo-500/20",
-                        hasActiveFilters && "text-indigo-400 border-indigo-500/20 bg-indigo-500/10"
+                        hasChanges && !showFilterPanel && "text-indigo-400 border-indigo-500/20 bg-indigo-500/10"
                     )}
                     title="Filter & Sortierung"
                 >
                     <ListFilter size={18} />
-                    <span className="hidden sm:inline text-xs sm:text-sm font-medium">Filter</span>
-                    {activeFilterCount > 0 && (
+                    {isNonDefaultSort && !activeFilterCount ? (
+                        <span className="hidden sm:inline text-xs font-medium truncate max-w-[120px]">{currentSortLabel}</span>
+                    ) : (
+                        <span className="hidden sm:inline text-xs sm:text-sm font-medium">Filter</span>
+                    )}
+                    {(activeFilterCount > 0 || isNonDefaultSort) && (
                         <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center">
-                            {activeFilterCount}
+                            {activeFilterCount + (isNonDefaultSort ? 1 : 0)}
                         </span>
                     )}
                 </button>
@@ -256,7 +264,7 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
                                     <div className="text-center space-y-2">
                                         <h3 className="text-xl font-bold text-white tracking-tight">Aktuell keine lokalen Jobs</h3>
                                         <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-                                            {hasActiveFilters
+                                            {hasChanges
                                                 ? "Keine lokalen Jobs für deine aktuellen Filter. Versuche, die Filter anzupassen."
                                                 : extendedActiveJobs.length > 0
                                                     ? "Aber gute Neuigkeiten! Entdecke unten spannende überregionale Angebote aus benachbarten Städten."
@@ -274,7 +282,7 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
                     </div>
 
                     {/* Extended Jobs */}
-                    {(filteredExtendedJobs.length > 0 || (hasActiveFilters && extendedActiveJobs.length > 0)) && (
+                    {(filteredExtendedJobs.length > 0 || (hasChanges && extendedActiveJobs.length > 0)) && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 fill-mode-both mt-12">
                             <JobsListSection
                                 title="Überregionale Angebote"
@@ -334,17 +342,16 @@ export function JobsList({ localActiveJobs, extendedActiveJobs, waitlistedJobs, 
             />
 
             {/* Filter & Sort Panel */}
-            {showFilterPanel && (
-                <JobFilterSortPanel
-                    sortOption={sortOption}
-                    filterState={filterState}
-                    onSortChange={setSortOption}
-                    onFilterChange={setFilterState}
-                    onClose={() => setShowFilterPanel(false)}
-                    onReset={handleReset}
-                    hasActiveFilters={hasActiveFilters}
-                />
-            )}
+            <JobFilterSortPanel
+                isOpen={showFilterPanel}
+                sortOption={sortOption}
+                filterState={filterState}
+                onSortChange={setSortOption}
+                onFilterChange={setFilterState}
+                onClose={() => setShowFilterPanel(false)}
+                onReset={handleReset}
+                hasChanges={hasChanges}
+            />
         </>
     );
 }
