@@ -4,13 +4,10 @@ At **JobBridge**, security is our highest priority. As a platform serving minors
 
 ## Supported Versions
 
-We actively provide security updates for the current deployment and actively maintained branches.
+We actively provide security updates for the **latest version of the main branch** and the current production deployment. We do not support security patches for old versions, outdated forks, or community-maintained branches. 
 
-| Version | Supported          |
-| ------- | ------------------ |
-| v0.1.x  | :white_check_mark: |
-| Main Branch | :white_check_mark: |
-| Any Fork   | :x:                |
+> [!IMPORTANT]
+> To ensure you are running the most secure version of JobBridge, always keep your local repository synchronized with the official `main` branch.
 
 ## Reporting a Vulnerability
 
@@ -18,7 +15,7 @@ We actively provide security updates for the current deployment and actively mai
 
 If you have discovered a security vulnerability in JobBridge, please report it immediately via email:
 
-📧 **Email:** [mail@r-yalcin.de](mailto:mail@r-yalcin.de)
+📧 **Email:** [rezan@jobbridge.app](mailto:rezan@jobbridge.app)
 
 ### What to include in your report:
 To help us resolve the issue as quickly as possible, please include the following details in your email:

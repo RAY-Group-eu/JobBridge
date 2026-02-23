@@ -1,24 +1,97 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5e9,100:020617&height=300&section=header&text=JobBridge&fontSize=80&fontAlignY=30&desc=Connecting%20Generations%20%7C%20Secure%20Everyday%20Help%20%7C%20Verified%20Pocket%20Money%20Jobs&descAlignY=55&descSize=18&animation=twinkling&fontColor=ffffff&descColor=ffffff" width="100%" alt="JobBridge Header" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5e9,100:020617&height=300&section=header&text=JobBridge&fontSize=80&fontAlignY=30&desc=Sicher%20%E2%80%A2%20Lokal%20%E2%80%A2%20Fair%20%7C%20Die%20sichere%20Taschengeldb%C3%B6rse%20der%20Zukunft&descAlignY=55&descSize=18&animation=twinkling&fontColor=ffffff&descColor=ffffff" width="100%" alt="JobBridge Header" />
 </div>
 
 > [!CAUTION]
-> **PROPRIETARY AND CONFIDENTIAL**
-> This repository, including all source code, assets, and documentation, is the exclusive property of Rezan Aaron Yalçin. Unauthorized copying, modification, distribution, execution, or commercial use is strictly prohibited. By accessing this repository, you are bound by the terms of the proprietary license.
+> **PROPRIETARY AND STRICTLY CONFIDENTIAL**
+> This repository, including all source code, assets, UI/UX designs, and documentation, is the exclusive intellectual property of Rezan Aaron Yalçin. Unauthorized copying, modification, distribution, or commercial use is strictly prohibited. By accessing this repository, you agree to be bound by the proprietary license terms outlined at the bottom of this document.
 
 ---
 
-## System Overview
+## ✦ System Overview
 
-JobBridge is a web platform that connects job seekers with private individuals and companies for everyday help and pocket money jobs. Users register as either a **Job Seeker** or a **Job Provider** (private person or company). Job seekers browse, filter, and apply to location-based job listings. Job providers create and manage postings, review applicants, and communicate through the built-in messaging system.
+Welcome to the **JobBridge Web Platform**. 
 
-The platform enforces a guardian consent flow for minors, provider verification for companies, and role-based access control for internal staff (administrators, moderators, analysts). All data access is governed by Row Level Security policies at the database layer.
+JobBridge is a high-end platform connecting job seekers (youth, adults, seniors) with private individuals and companies for everyday tasks and pocket-money jobs. This repository specifically houses our **Web Application**—a highly optimized, PWA-ready Next.js 15 environment that delivers a native, app-like experience directly in the browser. *(Note: Our native iOS and Android applications are maintained in separate, dedicated repositories).*
+
+Our engineering philosophy prioritizes three pillars: **Uncompromising Security**, **Cinematic UX/UI**, and **Scalable Architecture**.
 
 ---
 
-## Architecture
+## ⚡️ TrustScore: Predictive Security Algorithm
 
-### High-Level System Architecture
+Beyond classic reporting systems, JobBridge utilizes a sophisticated, proprietary **TrustScore Algorithm (0-10)** functioning dynamically in the background. 
+
+This is **not a public rating system**. It is an internal, multi-signal risk evaluation matrix designed to detect suspicious patterns early and protect our community proactively.
+
+```mermaid
+flowchart TD
+    classDef signals fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff
+    classDef engine fill:#312e81,stroke:#6366f1,stroke-width:2px,color:#fff
+    classDef action fill:#7f1d1d,stroke:#f87171,stroke-width:2px,color:#fff
+    classDef human fill:#14532d,stroke:#4ade80,stroke-width:2px,color:#fff
+
+    subgraph Evaluation Vectors
+        P[Profile Plausibility]:::signals
+        I[Information Consistency]:::signals
+        T[Technical & Temporal Anomalies]:::signals
+        C[Communication Patterns]:::signals
+        H[Interaction History]:::signals
+    end
+
+    Score{Algorithmic\\nTrustScore Engine}:::engine
+
+    P --> Score
+    I --> Score
+    T --> Score
+    C --> Score
+    H --> Score
+
+    Score -- "Score > Threshold" --> Pass[Normal Platform Access]:::human
+    Score -- "Score < Threshold" --> Flag[Internal System Flag]:::action
+
+    Flag --> Review{Human-in-the-Loop\\nModerator Review}:::human
+
+    Review -- "Suspicion Confirmed" --> Ban[Account Restricted / Banned]:::action
+    Review -- "Inconclusive" --> Proof[Request Verification Proof]:::action
+    Review -- "False Positive" --> Restore[Restore Trust Level]:::human
+```
+
+### Core Principles
+1. **Protection by Design:** Highly sensitive actions require sufficient baseline trust.
+2. **Hidden Weights:** To prevent exploitation or "gaming" of the algorithm, the precise calculation weights, specific triggers, and thresholds remain strictly internal and continuously optimized.
+3. **Role-Specific Logic:** Youth accounts and Provider accounts are evaluated against different risk vectors.
+4. **Human-in-the-Loop:** The algorithm surfaces threats; human moderators make the final call (requesting further proof or restricting access).
+
+---
+
+## 🛡️ The Guardian Consent Flow
+
+We ensure absolute legal compliance and safety for minors on the platform. Youth accounts operate under a strict "Gate" and cannot apply to jobs until a legal guardian has cryptographically verified the connection.
+
+**The Workflow:**
+1. **Initiation:** The minor registers and generates a secure, one-time invitation link within the JobBridge app.
+2. **Transmission:** The minor shares this unique link directly with their legal guardian.
+3. **Guardian Registration:** The parent clicks the link and is prompted to create their *own* JobBridge account, passing our standard basic verification.
+4. **Official Approval:** Using their verified account, the parent officially grants consent for the minor.
+5. **Cryptographic Linking:** The system redeems the SHA-256 hashed token, linking the two accounts (`guardian_status = linked`). The parent retains administrative oversight, and the minor is granted full platform access.
+
+---
+
+## 🔄 Application Lifecycle & Waitlist Mechanics
+
+JobBridge utilizes a highly efficient **Single Hiring Mode** designed to eliminate application frustration.
+
+Instead of allowing 50 people to apply for a job that is already promised to someone else, we use an automated reservation and waitlist system:
+
+1. **Application & Reservation:** When the first user applies, the job is immediately marked as `reserved`. It is instantly removed from the active, open job marketplace for everyone else.
+2. **The Waitlist Market:** The reserved job transitions into the specialized "Waitlist Marketplace".
+3. **Joining the Queue:** Other interested users can view the job in the Waitlist Market and explicitly join the queue (taking 2nd, 3rd, or 4th place).
+4. **Automatic Promotion:** If the primary applicant withdraws, or if the job provider cancels the arrangement because an agreement wasn't reached, the system automatically promotes the 2nd place user to the active slot, instantly notifying all parties.
+
+---
+
+## 🏗️ High-Level System Architecture
 
 ```mermaid
 flowchart TB
@@ -32,376 +105,145 @@ flowchart TB
     subgraph Accounts ["Account Types"]
         direction LR
         Seeker(["Job Seeker\\n(Youth, Adult, Senior)"]):::account
-        Private(["Job Provider\\n(Private)"]):::account
-        Company(["Job Provider\\n(Company)"]):::account
+        Provider(["Job Provider\\n(Private / Company)"]):::account
     end
 
-    subgraph Roles ["System Roles (Staff)"]
-        direction LR
-        Admin(["Administrator"]):::role
-        Moderator(["Moderator"]):::role
-        Analyst(["Analyst"]):::role
-    end
-
-    subgraph Client ["Client Layer (Next.js 16 / React 19)"]
+    subgraph Client ["Web Platform (Next.js 15 / React 19)"]
         direction TB
         UI["React UI\\n(Tailwind v4, Framer Motion)"]:::frontend
-        Geo["Geospatial Map View\\n(Leaflet, MapLibre GL)"]:::frontend
         Edge{"Edge Middleware\\n(Route Protection)"}:::security
     end
 
-    subgraph Server ["Server Layer (Server Actions / RPCs)"]
+    subgraph Server ["Server Actions & RPCs"]
         direction TB
-        Jobs["Job Engine\\ncreate_job_atomic\\nget_jobs_feed"]:::core
-        Apps["Application Flow\\naccept_applicant"]:::core
-        GuardianFlow["Guardian Consent\\ncreate / redeem invitation"]:::security
-        Verify["Verification\\nOTP + Provider Check"]:::core
+        Jobs["Job Engine\\ncreate_job_atomic"]:::core
+        GuardianFlow["Guardian Consent\\nSHA-256 Tokens"]:::security
+        Verify["Verification\\nOTP Checks"]:::core
     end
 
     subgraph Data ["Data Layer (Supabase)"]
         direction TB
-        Auth["GoTrue Auth\\n(JWT, Session Management)"]:::security
-        RLS{"Row Level Security\\nPolicies per Table"}:::security
+        Auth["GoTrue Auth\\n(JWT)"]:::security
+        RLS{"Row Level Security\\n(Zero-Trust)"}:::security
         DB[("PostgreSQL + PostGIS\\n20+ Tables")]:::data
-        Storage["Blob Storage\\n(Avatars, Documents)"]:::data
     end
 
-    Seeker --> UI
-    Private --> UI
-    Company --> UI
-    Admin --> UI
-    Moderator --> UI
-    Analyst --> UI
-
-    UI <--> Geo
+    Seeker & Provider --> UI
     UI --> Edge
-    Edge -->|"Authenticated + Authorized"| Server
-    Edge -.->|"Unauthenticated"| Auth
-
-    Jobs --> RLS
-    Apps --> RLS
-    GuardianFlow --> Auth
-    Verify --> Auth
-
-    Auth --> DB
+    Edge -->|"Authenticated"| Server
+    Jobs & GuardianFlow & Verify --> RLS
     RLS --> DB
-    RLS --> Storage
+    Auth --> DB
 ```
 
-**Account Types** determine what a user can do on the platform:
-| Account Type | Provider Kind | Description |
+---
+
+## 🛠️ Database Schema Hierarchy
+
+Our PostgreSQL Database (managed via Supabase) operates under strict Row Level Security (RLS). No query bypasses the policy checks.
+
+| Table | Purpose | Security Concept |
 | :--- | :--- | :--- |
-| `job_seeker` | — | Browses and applies to jobs. Youth, adults, and seniors. |
-| `job_provider` | `private` | Private individuals posting everyday help tasks. |
-| `job_provider` | `company` | Registered businesses posting verified job listings. |
-
-**System Roles** are assigned to internal staff members via the `user_system_roles` table:
-| Role | Access |
-| :--- | :--- |
-| `admin` | Full system configuration, user management, all dashboards. |
-| `moderator` | Reviews reports, moderates content, manages flagged users. |
-| `analyst` | Read-only access to dashboards and metrics. |
-
----
-
-### Guardian Consent Flow
-
-Minors on the platform cannot apply to jobs until a legal guardian has verified their account. The flow uses a cryptographic token (SHA-256 hashed, stored in `guardian_invitations`) with a configurable expiration.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Minor as Minor (Job Seeker)
-    participant App as JobBridge App
-    participant DB as Supabase (PostgreSQL)
-    participant Email as Email Service
-    actor Guardian as Legal Guardian
-
-    Minor->>App: Registers and completes onboarding
-    App->>DB: Creates profile (guardian_status = none)
-    Minor->>App: Enters guardian email address
-    App->>DB: create_guardian_invitation()
-    Note right of DB: Generates token, stores SHA-256 hash
-    App->>Email: Sends secure consent link
-    Email->>Guardian: Receives invitation email
-    Guardian->>App: Opens consent link (/guardian/accept?token=...)
-    App->>DB: Validates token hash and expiration
-    Guardian->>App: Reviews terms and approves
-    App->>DB: redeem_guardian_invitation()
-    Note right of DB: guardian_status = linked
-    DB-->>App: Sets guardian_id, guardian_verified_at
-    App-->>Minor: Full platform access granted
-```
-
-> **Gate:** When a minor attempts to apply for a job and `guardian_status` is not `linked`, the UI displays a `GuardianConsentModal` instead of the application form.
+| `profiles` | Name, city, account type, guardian status. | RLS: Users can only mutate their own ID. |
+| `jobs` | Public listing data (title, category, wage). | RLS: Public read, Author mutate only. |
+| `job_private_details` | Sensitive location data (full address, private lat/lng). | Revealed strictly based on `address_reveal_policy` (e.g., post-acceptance). |
+| `applications` | Status engine (reserved, waitlisted, accepted). | Links `jobs` to applicant `profiles`. |
+| `guardian_invitations` | SHA-256 hashed cryptographic consent tokens. | Written ONLY via `SECURITY DEFINER` RPCs. |
+| `guardian_relationships` | Active links binding minors to verified guardians. | Managed exclusively by secure server flows. |
+| `system_roles` | Role definitions (admin, moderator, analyst). | Static seed data globally read-only. |
+| `user_system_roles` | Admin, Moderator, and Analyst assignments. | Used globally in RLS `has_system_role()` checks. |
+| `security_events` | Security audit logging (IP, user agent actions). | Append-only. Visible to analysts/admins. |
+| `reports` | User moderation reports against jobs or messages. | Target-type specific. |
+| `moderation_actions` | Audit trail for human-in-the-loop decisions. | Traceable back to specific staff ID. |
+| `notification_preferences` | Per-user control for email digests/quiet hours. | RLS: Users manage their own preferences. |
+| `notifications` | In-app automated alert system. | Private notification feed. |
+| `messages` | Escrowed communication within active job applications. | Only accessible per application participants. |
+| `regions_live` | Geographic boundaries for active service markets. | Managed by admins. |
 
 ---
 
-### Application Lifecycle
+## 💻 Elite Technology Stack
 
-Every job application moves through a defined state machine. The `accept_applicant` RPC handles atomic status transitions on the database level.
-
-```mermaid
-stateDiagram-v2
-    [*] --> submitted : Seeker applies
-    submitted --> accepted : Provider accepts
-    submitted --> rejected : Provider rejects
-    submitted --> auto_rejected : Job filled or expired
-    submitted --> withdrawn : Seeker withdraws
-    submitted --> waitlisted : Provider waitlists
-    submitted --> negotiating : Provider negotiates
-
-    accepted --> completed : Job finished
-    accepted --> cancelled : Either party cancels
-    negotiating --> accepted : Terms agreed
-    negotiating --> withdrawn : Seeker withdraws
-    waitlisted --> accepted : Slot opens
-    waitlisted --> rejected : Provider rejects
-
-    completed --> [*]
-    rejected --> [*]
-    auto_rejected --> [*]
-    withdrawn --> [*]
-    cancelled --> [*]
-```
-
-| Status | Triggered By | Description |
-| :--- | :--- | :--- |
-| `submitted` | Seeker | Initial application with optional message. |
-| `accepted` | Provider | Provider confirms the applicant for the job. |
-| `rejected` | Provider | Provider declines the application with optional reason. |
-| `auto_rejected` | System | Job was filled or expired before review. |
-| `withdrawn` | Seeker | Seeker retracts their application. |
-| `negotiating` | Provider | Provider opens a dialogue before accepting. |
-| `waitlisted` | Provider | Applicant is held in reserve. |
-| `completed` | Provider | Job was performed and finished. |
-| `cancelled` | Either | Accepted job was cancelled before completion. |
-
----
-
-### Job System
-
-Jobs are created atomically via the `create_job_atomic` RPC, which inserts into both `jobs` and `job_private_details` in a single transaction. Sensitive location data (full address, private coordinates) is stored separately in `job_private_details` and only revealed based on the `address_reveal_policy`.
-
-| Field | Values | Description |
-| :--- | :--- | :--- |
-| **Status** | `draft`, `open`, `closed`, `reviewing`, `reserved`, `filled` | Lifecycle state of the job listing. |
-| **Hiring Mode** | `open_pool`, `first_come`, `direct_hire` | Controls how applications are collected and processed. |
-| **Reach** | `internal_rheinbach`, `extended` | Visibility scope: local market only or cross-region. |
-| **Address Reveal** | `after_apply`, `after_accept` | When applicants can see the full private address. |
-| **Categories** | `garden`, `household`, `babysitting`, `tutoring`, `it_help`, `moving`, `pets`, `shopping`, `other` | Predefined categories with recommended wage ranges. |
-
----
-
-## Security and Access Control
-
-### Edge Middleware (Route Protection)
-
-The `middleware.ts` runs on every request at the Vercel edge. It validates the session via Supabase Auth, resolves the user's system roles, and enforces route-level access:
-
-| Route | Required Role |
-| :--- | :--- |
-| `/admin/*`, `/staff/*` | `admin` or `moderator` or `analyst` |
-| `/analytics/*` | `admin` or `analyst` |
-| `/moderation/*` | `admin` or `moderator` |
-| `/app-home/*` | Any authenticated user |
-| All other routes | Public |
-
-Unauthenticated requests to protected routes are redirected to `/`. Authenticated users without sufficient roles are redirected to `/app-home`.
-
-### Row Level Security (RLS)
-
-Every table in the database has RLS enabled. Policies ensure:
-- Users can only read and modify their own `profiles`, `applications`, `messages`, and `notifications`.
-- Staff can view user data through explicit `has_system_role()` checks in policy definitions.
-- Guardian invitations are only writable through `SECURITY DEFINER` RPCs, never directly.
-- Moderation actions and reports are restricted to staff roles.
-
-### Authentication States
-
-The auth layer (`src/lib/auth.ts`) resolves every user into one of four states:
-
-| State | Behavior |
-| :--- | :--- |
-| `no-session` | No valid JWT. Redirect to login. |
-| `email-unconfirmed` | Account exists but email not verified via OTP. |
-| `incomplete-profile` | Email verified but onboarding not finished. Redirect to `/onboarding`. |
-| `ready` | Fully authenticated and onboarded. Access granted. |
-
-### Effective Role Resolution
-
-Staff members can temporarily assume a different account type view for debugging. The resolution priority is:
-1. **Demo Mode** (highest priority) via `demo_sessions` table
-2. **Role Override** via `role_overrides` table (with expiration)
-3. **Base Profile** from `profiles.account_type`
-
----
-
-## Database Schema
-
-The database is defined in `infrastructure/database/schema.sql`. It contains 20+ tables, views, functions, and triggers. Below are the core tables:
-
-| Table | Purpose |
-| :--- | :--- |
-| `profiles` | User data: name, birthdate, city, account type, provider kind, guardian status, coordinates, company fields. |
-| `jobs` | Job listings: title, description, status, category, wage, hiring mode, reach, public location. |
-| `job_private_details` | Sensitive job data (1:1 with jobs): full address, private coordinates, internal notes. |
-| `applications` | Job applications: status, message, rejection reason. FK to jobs and profiles. |
-| `messages` | In-app messaging scoped per application. Sender, content, read timestamp. |
-| `notifications` | User notifications with type (`info`, `success`, `warning`, `error`, `message`) and metadata. |
-| `notification_preferences` | Per-user email toggle settings, quiet hours, digest frequency. |
-| `guardian_invitations` | Cryptographic consent tokens: SHA-256 hash, status, expiration, redeemed-by. |
-| `guardian_relationships` | Links between guardians and minors. |
-| `system_roles` | Role definitions: `admin`, `moderator`, `analyst`. |
-| `user_system_roles` | M:N assignment of system roles to user profiles. |
-| `role_overrides` | Temporary account type overrides for staff debugging. |
-| `demo_sessions` | Sandbox mode state per user. |
-| `regions_live` | Active market regions: city, postal code, federal state, display name. |
-| `reports` | User/content reports: target type, reason code, status. |
-| `moderation_actions` | Audit trail for moderator actions. |
-| `security_events` | Security audit log: event type, IP address, user agent. |
-| `waitlist` | Pre-launch signups by region. |
-| `verification_attempts` | Rate limiting for OTP verification. |
-
-**Key RPCs:** `create_job_atomic`, `accept_applicant`, `create_guardian_invitation`, `redeem_guardian_invitation`, `get_jobs_feed`, `has_system_role`, `is_admin`, `is_staff`, `get_effective_role`
-
----
-
-## Project Structure
-
-```text
-jobbridge/
-|-- infrastructure/
-|   |-- database/
-|   |   +-- schema.sql              # Master database schema (tables, RLS, RPCs, triggers)
-|   +-- scripts/
-|       +-- verify_application_flow.ts
-|-- public/                          # Static assets
-|-- src/
-|   |-- app/
-|   |   |-- layout.tsx               # Root layout
-|   |   |-- page.tsx                 # Landing page
-|   |   |-- actions/                 # Server actions (guardian, jobs)
-|   |   |-- admin/                   # Admin dashboard, user mgmt, roles, moderation
-|   |   |-- staff/                   # Staff dashboard (moderator/analyst views)
-|   |   |-- app-home/               # Authenticated user home (jobs, applications, messages)
-|   |   |-- auth/                    # Auth callbacks, password flows
-|   |   |-- guardian/                # Guardian accept/access pages
-|   |   |-- onboarding/             # Onboarding wizard and waitlist
-|   |   |-- notifications/          # Notification center and settings
-|   |   +-- api/                     # API routes (location, region, admin)
-|   |-- components/
-|   |   |-- ui/                      # Base UI primitives (buttons, inputs, cards)
-|   |   |-- jobs/                    # Job cards, creation forms, feed
-|   |   |-- applications/           # Application modals, status display
-|   |   |-- profile/                # Profile views and edit forms
-|   |   |-- onboarding/             # Onboarding wizard steps
-|   |   |-- notifications/          # Notification list and badges
-|   |   |-- offers/                  # Offer management components
-|   |   |-- layout/                  # Navigation, sidebar, header
-|   |   |-- admin/                   # Admin-specific components
-|   |   +-- auth/                    # Auth forms and guards
-|   |-- config/
-|   |   +-- navigation.ts           # Route config (seeker vs. provider navigation)
-|   |-- hooks/                       # Custom React hooks
-|   +-- lib/
-|       |-- auth.ts                  # Session management, auth state resolution
-|       |-- security.ts              # Security event logging
-|       |-- supabaseServer.ts        # Server-side Supabase client
-|       |-- supabaseClient.ts        # Client-side Supabase client
-|       |-- supabaseAdmin.ts         # Service-role Supabase client
-|       |-- types.ts                 # Core type definitions (AccountType, ProviderKind, etc.)
-|       |-- regions.ts               # Region configuration and fallbacks
-|       |-- constants/               # Job categories, enums, static config
-|       |-- dal/                     # Data Access Layer (job feed, applications, profiles)
-|       |-- services/                # Business logic services
-|       +-- types/                   # Generated Supabase types
-|-- middleware.ts                    # Edge middleware (route protection, role checks)
-+-- package.json
-```
-
----
-
-## Technology Stack
+JobBridge leverages the absolute pinnacle of modern web development frameworks to ensure enterprise-level scalability and a flawless user experience.
 
 <div align="center">
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,supabase,postgres,vercel,figma&theme=dark" alt="Tech Stack" />
-  </a>
+  <br />
+  
+  [![Next.js](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![React](https://img.shields.io/badge/React-19.2-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+  [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  [![Framer Motion](https://img.shields.io/badge/Framer_Motion-UI-FF0055?style=for-the-badge&logo=framer)](https://www.framer.com/motion/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Vercel](https://img.shields.io/badge/Vercel-Edge-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 </div>
-<br />
 
-| Layer | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Framework** | Next.js 16.1 (App Router) | Server-side rendering, edge middleware, server actions. |
-| **UI** | React 19.2 | Component architecture, concurrent features. |
-| **Styling** | Tailwind CSS v4, Framer Motion | Utility-first CSS, hardware-accelerated animations. |
-| **Language** | TypeScript (strict) | End-to-end type safety. |
-| **Backend** | Supabase (PostgreSQL 15, GoTrue Auth) | Database, authentication, real-time, storage. |
-| **Geospatial** | Leaflet, MapLibre GL | Interactive maps, distance calculations (Haversine). |
-| **Validation** | Zod | Runtime schema validation for forms and server actions. |
-| **Hosting** | Vercel | Edge deployment, serverless functions, CDN. |
+<br />
 
 ---
 
-## Local Development
+## 🚀 Local Development Setup
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+> [!IMPORTANT]
+> **Authorized Access Only**
+> While this repository is public for transparency and portfolio purposes, the source code remains strictly proprietary. Attempting to run this platform locally without authorized access to the JobBridge staging database and environment will fail.
 
-2. **Configure environment variables** — create `.env.local` in the project root:
-   ```bash
-   NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-   SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-   ```
+To boot the JobBridge Web Platform locally (authorized contributors only):
 
-3. **Initialize the database** — execute the master schema in your Supabase SQL Editor:
-   ```
-   infrastructure/database/schema.sql
-   ```
-   This creates all tables, enums, RLS policies, functions, triggers, and seeds the system roles.
+### 1. Prerequisites
+- **Node.js**: `v20.x` LTS minimum.
+- **Backend**: You require authorized access to the JobBridge Supabase staging environment.
 
-4. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   The application runs at `http://localhost:3000`.
+### 2. Initialization
+
+```bash
+git clone https://github.com/JobBridge-app/app.git
+cd app
+npm install
+```
+
+### 3. Environment Configuration
+> [!TIP]
+> **Mini-Hint:** Without these exact keys in a `.env.local` file at the root of the project, the Edge Middleware will instantly reject connections.
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+### 4. Boot Engine
+
+```bash
+npm run dev
+```
+
+The platform compiles and boots at **[http://localhost:3000](http://localhost:3000)**. Enjoy the cinematic experience.
 
 ---
 
 ## License and Legal Terms
 
-> [!WARNING]
+> [!CAUTION]
 > **STRICTLY PROPRIETARY AND CONFIDENTIAL**
 > 
 > **Copyright (c) 2026 Rezan Aaron Yalçin. All rights reserved.**
 > 
-> This software is governed by the **JOBBRIDGE PROPRIETARY LICENSE**.
+> This software is governed by the **JOBBRIDGE PROPRIETARY LICENSE**. No license is granted under any copyright, patent, trademark, trade secret, or other intellectual property right.
 > 
-> By accessing, viewing, or interacting with this repository in any capacity, you are legally bound by the following terms:
+> You are explicitly forbidden to:
+> - Copy, clone, mirror, or archive the Software.
+> - Modify, adapt, or create derivative works.
+> - Distribute, publish, sell, or use the Software in any commercial product or AI training dataset.
 > 
-> 1. **Absolute Ownership**: The Software is proprietary and owned exclusively by the Licensor. All intellectual property rights remain strictly with the Licensor.
-> 2. **Zero License Granted**: No license is granted under any copyright, patent, trademark, trade secret, or other intellectual property right.
-> 3. **Restricted Access**: Permission is granted solely to access and view the Software via this repository for evaluation and informational purposes.
-> 4. **Prohibited Actions**: You are explicitly forbidden to:
->    - Copy, reproduce, download, clone, mirror, or archive the Software.
->    - Modify, adapt, translate, or create derivative works.
->    - Compile, run, execute, or use the Software for any purpose whatsoever.
->    - Distribute, publish, sublicense, sell, rent, lease, or lend the Software.
->    - Use the Software in any commercial product, service, or AI training dataset.
->    - Remove, alter, or obscure any copyright or proprietary notices.
-> 
-> **ENFORCEMENT**: Any breach of these terms terminates the limited permission immediately and automatically. The Licensor reserves the right to pursue all available legal remedies under the laws of the Federal Republic of Germany. For the complete legal text, refer to the `License` file located in the root directory.
+> **ENFORCEMENT**: The Licensor reserves the right to pursue all available legal remedies under the laws of the Federal Republic of Germany for any breach of these terms.
 
----
+<br/>
 
 <div align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:020617,100:0ea5e9&height=120&section=footer" width="100%" alt="Footer" />
 </div>
 
 <div align="center">
-  <sub>JobBridge &copy; 2026 Rezan Aaron Yalçin — All Rights Reserved.</sub>
+  <sub>JobBridge Web Platform &copy; 2026 Rezan Aaron Yalçin — All Rights Reserved.</sub>
 </div>
