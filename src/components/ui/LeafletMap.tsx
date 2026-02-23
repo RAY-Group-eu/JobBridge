@@ -50,12 +50,14 @@ export default function LeafletMap({ center, zoom = 13, className }: LeafletMapP
         <MapContainer
             center={center}
             zoom={zoom}
-            scrollWheelZoom={false}
+            minZoom={zoom - 3} // Restrict how far they can zoom out (keep it regional)
+            maxZoom={18} // Restrict max zoom in
+            scrollWheelZoom={true}
             className={`z-0 ${className}`}
             style={{ height: "100%", width: "100%", background: "#121217" }}
-            dragging={false} // Static feel as per "screenshot" look, but interactive enough if user wants
-            zoomControl={false} // Cleaner look
-            doubleClickZoom={false}
+            dragging={true} // Enable panning around
+            zoomControl={false} // Keep UI clean
+            doubleClickZoom={true}
             preferCanvas={true}
         >
             <style jsx global>{`
