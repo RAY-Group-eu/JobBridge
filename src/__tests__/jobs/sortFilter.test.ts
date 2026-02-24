@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     sortJobs,
     applyFilters,
+    deriveVisibleJobs,
     DEFAULT_FILTER_STATE,
 } from "@/lib/jobs/sortFilter";
 import type { JobsListItem } from "@/lib/types/jobbridge";
@@ -251,5 +252,62 @@ describe("applyFilters – does not mutate input", () => {
         const original = [...jobs];
         applyFilters(jobs, DEFAULT_FILTER_STATE);
         expect(jobs).toHaveLength(original.length);
+    });
+});
+
+// ─── deriveVisibleJobs ────────────────────────────────────────────────────────
+
+describe("deriveVisibleJobs – composes filter then sort", () => {
+    it("applies filter before sort: only matching jobs appear in sorted order", () => {
+        const jobs = [
+            makeJob({ id: "a", category: "gardening", distance_km: 5 }),
+            makeJob({ id: "b", category: "cleaning", distance_km: 2 }),
+            makeJob({ id: "c", category: "gardening", distance_km: 1 }),
+        ];
+        const result = deriveVisibleJobs(
+            jobs,
+            { categories: ["gardening"], maxDistanceKm: null },
+            "distance"
+        );
+        // b excluded by category; remaining sorted by distance asc
+        expect(result.map((j) => j.id)).toEqual(["c", "a"]);
+    });
+
+    it("returns all jobs sorted when no filters active (fast path)", () => {
+        const jobs = [
+            makeJob({ id: "a", created_at: "2024-01-01T00:00:00Z" }),
+            makeJob({ id: "b", created_at: "2024-03-01T00:00:00Z" }),
+        ];
+        const result = deriveVisibleJobs(jobs, DEFAULT_FILTER_STATE, "newest");
+        expect(result.map((j) => j.id)).toEqual(["b", "a"]);
+    });
+
+    it("changing FilterState produces a deterministic, different result", () => {
+        const jobs = [
+            makeJob({ id: "a", category: "gardening", distance_km: 3 }),
+            makeJob({ id: "b", category: "cleaning", distance_km: 1 }),
+        ];
+        const all = deriveVisibleJobs(jobs, DEFAULT_FILTER_STATE, "distance");
+        const filtered = deriveVisibleJobs(
+            jobs,
+            { categories: ["cleaning"], maxDistanceKm: null },
+            "distance"
+        );
+        expect(all).toHaveLength(2);
+        expect(filtered).toHaveLength(1);
+        expect(filtered[0].id).toBe("b");
+    });
+
+    it("returns empty array when max-distance filter removes all jobs", () => {
+        const jobs = [
+            makeJob({ id: "a", distance_km: 50 }),
+            makeJob({ id: "b", distance_km: null }),
+        ];
+        const result = deriveVisibleJobs(
+            jobs,
+            { categories: [], maxDistanceKm: 5 },
+            "distance"
+        );
+        expect(result).toHaveLength(0);
     });
 });

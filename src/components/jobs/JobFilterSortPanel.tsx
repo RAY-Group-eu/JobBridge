@@ -15,10 +15,6 @@ import {
     SORT_META,
 } from "@/lib/jobs/sortFilter";
 
-// Re-export types and constants so callers can import from one place
-export type { SortOption, FilterState };
-export { DEFAULT_SORT_OPTION, DEFAULT_FILTER_STATE };
-
 // ─── Sort option metadata (with UI icons) ─────────────────────────────────────
 
 const SORT_OPTIONS: readonly {
@@ -31,8 +27,6 @@ const SORT_OPTIONS: readonly {
     { value: "newest",    icon: Zap,        ...SORT_META.newest },
     { value: "wage_desc", icon: Euro,       ...SORT_META.wage_desc },
 ];
-
-export { SORT_OPTIONS };
 
 const DISTANCE_OPTIONS = [5, 10, 20, 50] as const;
 /** null = "Alle" (no filter), followed by specific km values */

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { JobsListSection } from "@/components/jobs/JobsListSection";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
@@ -8,15 +8,16 @@ import { Briefcase, CheckCircle2, Clock, ListFilter, MapPin } from "lucide-react
 import type { JobsListItem } from "@/lib/types/jobbridge";
 import { cn } from "@/lib/utils";
 import {
+    deriveVisibleJobs,
     sortJobs,
-    applyFilters,
     isValidSortOption,
     DEFAULT_SORT_OPTION,
     DEFAULT_FILTER_STATE,
     SORT_META,
+    type SortOption,
+    type FilterState,
 } from "@/lib/jobs/sortFilter";
 import { JobFilterSortPanel } from "@/components/jobs/JobFilterSortPanel";
-import type { SortOption, FilterState } from "@/components/jobs/JobFilterSortPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,18 +42,18 @@ function loadPersistedState(): { sortOption: SortOption; filterState: FilterStat
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return { sortOption: DEFAULT_SORT_OPTION, filterState: DEFAULT_FILTER_STATE };
         const parsed = JSON.parse(raw) as { sortOption?: unknown; filterState?: Partial<FilterState> };
+        const fs = parsed.filterState;
         return {
             sortOption: isValidSortOption(parsed.sortOption)
                 ? parsed.sortOption
                 : DEFAULT_SORT_OPTION,
             filterState: {
-                categories: Array.isArray(parsed.filterState?.categories)
-                    ? parsed.filterState.categories.filter((c): c is string => typeof c === "string")
+                categories: Array.isArray(fs?.categories)
+                    ? fs.categories.filter((c): c is string => typeof c === "string")
                     : [],
                 maxDistanceKm:
-                    parsed.filterState?.maxDistanceKm === null ||
-                    typeof parsed.filterState?.maxDistanceKm === "number"
-                        ? parsed.filterState.maxDistanceKm ?? null
+                    fs?.maxDistanceKm === null || typeof fs?.maxDistanceKm === "number"
+                        ? (fs.maxDistanceKm ?? null)
                         : null,
             },
         };
@@ -61,23 +62,11 @@ function loadPersistedState(): { sortOption: SortOption; filterState: FilterStat
     }
 }
 
-// Debounce helper: delays writes to avoid hammering storage on rapid chip toggles
-function debounce<T extends unknown[]>(fn: (...args: T) => void, ms: number) {
-    let timer: ReturnType<typeof setTimeout>;
-    return (...args: T) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), ms);
-    };
+function persistState(sortOption: SortOption, filterState: FilterState): void {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ sortOption, filterState }));
+    } catch { /* storage unavailable — ignore */ }
 }
-
-const persistDebounced = debounce(
-    (sortOption: SortOption, filterState: FilterState) => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ sortOption, filterState }));
-        } catch { /* storage unavailable */ }
-    },
-    400
-);
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 
@@ -106,27 +95,27 @@ export function JobsList({
     const [prevTab, setPrevTab] = useState<Tab>("active");
     const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-    const [sortOption, setSortOptionRaw] = useState<SortOption>(DEFAULT_SORT_OPTION);
-    const [filterState, setFilterStateRaw] = useState<FilterState>(DEFAULT_FILTER_STATE);
+    const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT_OPTION);
+    const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
 
     // Load persisted state after hydration
     useEffect(() => {
         const { sortOption: s, filterState: f } = loadPersistedState();
-        setSortOptionRaw(s);
-        setFilterStateRaw(f);
+        setSortOption(s);
+        setFilterState(f);
     }, []);
 
-    // Persist whenever state changes (debounced to avoid hammering on rapid chip toggles)
+    // Persist whenever state changes, debounced to avoid hammering storage on rapid chip toggles.
+    // Timer lives in a ref so it is cancelled on unmount (no stale writes).
+    const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
-        persistDebounced(sortOption, filterState);
+        persistTimerRef.current && clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = setTimeout(
+            () => persistState(sortOption, filterState),
+            400
+        );
+        return () => { persistTimerRef.current && clearTimeout(persistTimerRef.current); };
     }, [sortOption, filterState]);
-
-    // Wrap setters to keep a single update path
-    const setSortOption = useCallback((opt: SortOption) => setSortOptionRaw(opt), []);
-    const setFilterState: React.Dispatch<React.SetStateAction<FilterState>> = useCallback(
-        (update) => setFilterStateRaw(update),
-        []
-    );
 
     // Derived UI state
     const activeFilterCount =
@@ -152,15 +141,15 @@ export function JobsList({
     const handleReset = useCallback(() => {
         setSortOption(DEFAULT_SORT_OPTION);
         setFilterState(DEFAULT_FILTER_STATE);
-    }, [setSortOption, setFilterState]);
+    }, []);
 
     // Filtered + sorted lists (memoized)
     const filteredLocalJobs = useMemo(
-        () => sortJobs(applyFilters(localActiveJobs, filterState), sortOption),
+        () => deriveVisibleJobs(localActiveJobs, filterState, sortOption),
         [localActiveJobs, filterState, sortOption]
     );
     const filteredExtendedJobs = useMemo(
-        () => sortJobs(applyFilters(extendedActiveJobs, filterState), sortOption),
+        () => deriveVisibleJobs(extendedActiveJobs, filterState, sortOption),
         [extendedActiveJobs, filterState, sortOption]
     );
     const sortedWaitlistedJobs = useMemo(

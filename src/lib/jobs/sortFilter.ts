@@ -110,3 +110,17 @@ export function applyFilters(
         return true;
     });
 }
+
+// ─── Composed helper ──────────────────────────────────────────────────────────
+
+/**
+ * Apply filters then sort in a single call.
+ * Use this in rendering layers to avoid repeating `sortJobs(applyFilters(...))`.
+ */
+export function deriveVisibleJobs(
+    jobs: readonly JobsListItem[],
+    filters: FilterState,
+    sort: SortOption
+): JobsListItem[] {
+    return sortJobs(applyFilters(jobs, filters), sort);
+}
