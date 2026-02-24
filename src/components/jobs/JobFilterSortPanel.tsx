@@ -10,8 +10,6 @@ import { JOB_CATEGORIES } from "@/lib/constants/jobCategories";
 import {
     type SortOption,
     type FilterState,
-    DEFAULT_SORT_OPTION,
-    DEFAULT_FILTER_STATE,
     SORT_META,
 } from "@/lib/jobs/sortFilter";
 
