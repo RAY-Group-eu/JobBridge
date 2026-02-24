@@ -3,63 +3,58 @@
 import { useCallback, useEffect, useRef } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X, SlidersHorizontal, ArrowUpDown, Tag, MapPin, Navigation, Zap, Euro } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JOB_CATEGORIES } from "@/lib/constants/jobCategories";
+import {
+    type SortOption,
+    type FilterState,
+    DEFAULT_SORT_OPTION,
+    DEFAULT_FILTER_STATE,
+    SORT_META,
+} from "@/lib/jobs/sortFilter";
 
-// ─── Types & Constants ────────────────────────────────────────────────────────
+// Re-export types and constants so callers can import from one place
+export type { SortOption, FilterState };
+export { DEFAULT_SORT_OPTION, DEFAULT_FILTER_STATE };
 
-export type SortOption = "distance" | "newest" | "wage_desc";
+// ─── Sort option metadata (with UI icons) ────────────────────────────────────
 
-export const DEFAULT_SORT_OPTION: SortOption = "distance";
-
-export interface FilterState {
-    categories: string[];
-    maxDistanceKm: number | null;
-}
-
-export const DEFAULT_FILTER_STATE: FilterState = {
-    categories: [],
-    maxDistanceKm: null,
-};
-
-export const SORT_OPTIONS: { value: SortOption; label: string; icon: React.ElementType; description: string }[] = [
-    {
-        value: "distance",
-        label: "Entfernung",
-        icon: Navigation,
-        description: "Nächstgelegene zuerst",
-    },
-    {
-        value: "newest",
-        label: "Neueste",
-        icon: Zap,
-        description: "Zuletzt eingestellt",
-    },
-    {
-        value: "wage_desc",
-        label: "Vergütung",
-        icon: Euro,
-        description: "Höchste zuerst",
-    },
+const SORT_OPTIONS: readonly {
+    value: SortOption;
+    label: string;
+    description: string;
+    icon: React.ElementType;
+}[] = [
+    { value: "distance",  icon: Navigation, ...SORT_META.distance },
+    { value: "newest",    icon: Zap,        ...SORT_META.newest },
+    { value: "wage_desc", icon: Euro,       ...SORT_META.wage_desc },
 ];
 
-const DISTANCE_OPTIONS = [5, 10, 20, 50];
+export { SORT_OPTIONS };
 
-// ─── Stagger animation variants ──────────────────────────────────────────────
+const DISTANCE_OPTIONS = [5, 10, 20, 50] as const;
+/** null = "Alle" (no filter), followed by specific km values */
+const ALL_DISTANCE_OPTIONS: (number | null)[] = [null, ...DISTANCE_OPTIONS];
+
+// ─── Motion variants ──────────────────────────────────────────────────────────
 
 const containerVariants = {
     hidden: {},
-    visible: {
-        transition: { staggerChildren: 0.04, delayChildren: 0.05 },
-    },
+    visible: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } },
 };
 
-const itemVariants = {
-    hidden: { opacity: 0, y: 6 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 28 } },
-};
+function itemVariant(reduced: boolean) {
+    return {
+        hidden: { opacity: 0, y: reduced ? 0 : 6 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { type: "spring" as const, stiffness: 400, damping: 28 },
+        },
+    };
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -72,7 +67,7 @@ interface JobFilterSortPanelProps {
     onClose: () => void;
     onReset: () => void;
     hasChanges: boolean;
-    /** Total result count to show in the CTA */
+    /** Pass the current visible result count; enables context-aware CTA copy. */
     resultCount?: number;
 }
 
@@ -88,6 +83,7 @@ export function JobFilterSortPanel({
     resultCount,
 }: JobFilterSortPanelProps) {
     const panelRef = useRef<HTMLDivElement>(null);
+    const prefersReduced = useReducedMotion() ?? false;
 
     // Lock body scroll + Escape key
     useEffect(() => {
@@ -117,6 +113,23 @@ export function JobFilterSortPanel({
 
     if (typeof document === "undefined") return null;
 
+    const isZeroResults = resultCount !== undefined && resultCount === 0;
+
+    const ctaLabel = isZeroResults
+        ? "Keine Treffer – Filter anpassen"
+        : resultCount !== undefined
+            ? `${resultCount} ${resultCount === 1 ? "Job" : "Jobs"} anzeigen`
+            : "Ergebnisse anzeigen";
+
+    // Reduced-motion variants
+    const panelMotion = prefersReduced
+        ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+        : {
+            initial: { opacity: 0, y: 48, scale: 0.97 },
+            animate: { opacity: 1, y: 0, scale: 1 },
+            exit:    { opacity: 0, y: 48, scale: 0.97 },
+        };
+
     return createPortal(
         <AnimatePresence>
             {isOpen && (
@@ -137,36 +150,37 @@ export function JobFilterSortPanel({
                         aria-hidden="true"
                     />
 
-                    {/* Panel */}
+                    {/* Panel — flat dark surface, no gradient fill */}
                     <motion.div
                         ref={panelRef}
-                        initial={{ opacity: 0, y: 48, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 48, scale: 0.97 }}
+                        {...panelMotion}
                         transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                        className="relative w-full max-w-sm flex flex-col max-h-[90vh] overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-[0_32px_80px_-8px_rgba(0,0,0,0.7)] border-t sm:border border-white/[0.08] bg-gradient-to-b from-[#1c1c22] to-[#18181b]"
+                        className="relative w-full max-w-sm flex flex-col max-h-[90vh] overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-[0_24px_64px_-8px_rgba(0,0,0,0.6)] border-t sm:border border-white/[0.08] bg-[#1a1a20]"
                     >
-                        {/* Top gradient accent */}
-                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent" />
+                        {/* Hairline top accent */}
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
 
-                        {/* Drag handle (mobile) */}
-                        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/15 rounded-full sm:hidden" />
+                        {/* Drag handle (mobile only) */}
+                        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-10 h-1 bg-white/15 rounded-full sm:hidden" aria-hidden="true" />
 
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 pt-7 pb-4 shrink-0">
                             <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                                <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-slate-300">
                                     <SlidersHorizontal size={15} />
                                 </div>
-                                <span className="text-white font-bold text-[15px] tracking-tight">Filter &amp; Sortierung</span>
+                                <span className="text-white font-semibold text-[15px] tracking-tight">
+                                    Filter &amp; Sortierung
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <AnimatePresence>
                                     {hasChanges && (
                                         <motion.button
-                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            initial={{ opacity: 0, scale: prefersReduced ? 1 : 0.85 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            exit={{ opacity: 0, scale: prefersReduced ? 1 : 0.85 }}
+                                            transition={{ duration: 0.15 }}
                                             onClick={onReset}
                                             className="text-[11px] text-indigo-400 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 px-2.5 py-1 rounded-lg font-semibold transition-colors"
                                         >
@@ -177,7 +191,7 @@ export function JobFilterSortPanel({
                                 <button
                                     onClick={onClose}
                                     aria-label="Schließen"
-                                    className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                                    className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
                                 >
                                     <X size={17} />
                                 </button>
@@ -185,7 +199,7 @@ export function JobFilterSortPanel({
                         </div>
 
                         {/* Divider */}
-                        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mx-6" />
+                        <div className="h-px bg-white/[0.05] mx-6" />
 
                         {/* Scrollable body */}
                         <motion.div
@@ -195,7 +209,7 @@ export function JobFilterSortPanel({
                             animate="visible"
                         >
                             {/* ── Sort ─────────────────────────────────────── */}
-                            <motion.section variants={itemVariants}>
+                            <motion.section variants={itemVariant(prefersReduced)}>
                                 <SectionLabel icon={ArrowUpDown} label="Sortierung" />
                                 <div className="grid grid-cols-3 gap-2 mt-3">
                                     {SORT_OPTIONS.map((opt) => {
@@ -205,23 +219,39 @@ export function JobFilterSortPanel({
                                             <button
                                                 key={opt.value}
                                                 onClick={() => onSortChange(opt.value)}
+                                                aria-pressed={isSelected}
                                                 className={cn(
-                                                    "relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl border text-center transition-all duration-200",
+                                                    "relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl border text-center transition-colors duration-150",
                                                     isSelected
-                                                        ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-300 shadow-[0_0_20px_-4px_rgba(99,102,241,0.4)]"
+                                                        ? "bg-indigo-500/10 border-indigo-500/35 text-indigo-300"
                                                         : "bg-white/[0.04] border-white/[0.07] text-slate-400 hover:bg-white/[0.07] hover:text-slate-200 hover:border-white/15"
                                                 )}
                                             >
                                                 {isSelected && (
                                                     <motion.div
                                                         layoutId="sort-selected-bg"
-                                                        className="absolute inset-0 rounded-2xl bg-indigo-500/10"
+                                                        className="absolute inset-0 rounded-2xl bg-indigo-500/[0.08]"
                                                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                                     />
                                                 )}
-                                                <Icon size={16} className={cn("relative z-10", isSelected ? "text-indigo-400" : "text-slate-500")} />
-                                                <span className="relative z-10 text-[11px] font-bold leading-tight">{opt.label}</span>
-                                                <span className={cn("relative z-10 text-[9px] leading-tight", isSelected ? "text-indigo-400/80" : "text-slate-600")}>{opt.description}</span>
+                                                <Icon
+                                                    size={16}
+                                                    className={cn(
+                                                        "relative z-10",
+                                                        isSelected ? "text-indigo-400" : "text-slate-500"
+                                                    )}
+                                                />
+                                                <span className="relative z-10 text-[12px] font-semibold leading-tight">
+                                                    {opt.label}
+                                                </span>
+                                                <span
+                                                    className={cn(
+                                                        "relative z-10 text-[11px] leading-tight",
+                                                        isSelected ? "text-indigo-400/70" : "text-slate-600"
+                                                    )}
+                                                >
+                                                    {opt.description}
+                                                </span>
                                             </button>
                                         );
                                     })}
@@ -229,7 +259,7 @@ export function JobFilterSortPanel({
                             </motion.section>
 
                             {/* ── Category ─────────────────────────────────── */}
-                            <motion.section variants={itemVariants}>
+                            <motion.section variants={itemVariant(prefersReduced)}>
                                 <SectionLabel icon={Tag} label="Kategorie" />
                                 <div className="flex flex-wrap gap-1.5 mt-3">
                                     {JOB_CATEGORIES.map((cat) => {
@@ -239,14 +269,18 @@ export function JobFilterSortPanel({
                                             <button
                                                 key={cat.id}
                                                 onClick={() => toggleCategory(cat.id)}
+                                                aria-pressed={isActive}
                                                 className={cn(
-                                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition-all duration-200",
+                                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-semibold border transition-colors duration-150",
                                                     isActive
-                                                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-[0_0_12px_-3px_rgba(99,102,241,0.4)]"
+                                                        ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/35"
                                                         : "bg-white/[0.04] text-slate-400 border-white/[0.07] hover:bg-white/[0.08] hover:text-slate-200 hover:border-white/15"
                                                 )}
                                             >
-                                                <CatIcon size={11} className={isActive ? "text-indigo-400" : "text-slate-500"} />
+                                                <CatIcon
+                                                    size={12}
+                                                    className={isActive ? "text-indigo-400" : "text-slate-500"}
+                                                />
                                                 {cat.label}
                                             </button>
                                         );
@@ -255,19 +289,20 @@ export function JobFilterSortPanel({
                             </motion.section>
 
                             {/* ── Distance ─────────────────────────────────── */}
-                            <motion.section variants={itemVariants}>
+                            <motion.section variants={itemVariant(prefersReduced)}>
                                 <SectionLabel icon={MapPin} label="Maximale Entfernung" />
                                 <div className="flex items-center gap-2 flex-wrap mt-3">
-                                    {[null, ...DISTANCE_OPTIONS].map((km) => {
+                                    {ALL_DISTANCE_OPTIONS.map((km) => {
                                         const isActive = filterState.maxDistanceKm === km;
                                         return (
                                             <button
                                                 key={km ?? "all"}
                                                 onClick={() => setMaxDistance(km)}
+                                                aria-pressed={isActive}
                                                 className={cn(
-                                                    "px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all duration-200",
+                                                    "px-3 py-1.5 rounded-xl text-[12px] font-semibold border transition-colors duration-150",
                                                     isActive
-                                                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-[0_0_12px_-3px_rgba(99,102,241,0.4)]"
+                                                        ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/35"
                                                         : "bg-white/[0.04] text-slate-400 border-white/[0.07] hover:bg-white/[0.08] hover:text-slate-200 hover:border-white/15"
                                                 )}
                                             >
@@ -286,20 +321,19 @@ export function JobFilterSortPanel({
 
                         {/* Footer */}
                         <div className="px-6 py-5 shrink-0">
-                            <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
+                            <div className="h-px bg-white/[0.05] mb-4" />
                             <button
-                                onClick={onClose}
-                                className="relative w-full py-3.5 rounded-2xl font-bold text-sm overflow-hidden group transition-all"
+                                onClick={isZeroResults ? undefined : onClose}
+                                disabled={isZeroResults}
+                                aria-disabled={isZeroResults}
+                                className={cn(
+                                    "w-full py-3.5 rounded-2xl font-semibold text-sm transition-all duration-150",
+                                    isZeroResults
+                                        ? "bg-white/[0.05] text-slate-500 border border-white/[0.07] cursor-not-allowed"
+                                        : "bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white"
+                                )}
                             >
-                                {/* Gradient background */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 group-hover:from-indigo-500 group-hover:to-violet-500 transition-all duration-300" />
-                                {/* Subtle shine */}
-                                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                                <span className="relative text-white">
-                                    {resultCount !== undefined
-                                        ? `${resultCount} ${resultCount === 1 ? "Job" : "Jobs"} anzeigen`
-                                        : "Ergebnisse anzeigen"}
-                                </span>
+                                {ctaLabel}
                             </button>
                         </div>
                     </motion.div>
@@ -310,11 +344,11 @@ export function JobFilterSortPanel({
     );
 }
 
-// ─── Small helper ─────────────────────────────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────────────────────
 
 function SectionLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
     return (
-        <h4 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        <h4 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">
             <Icon size={11} />
             {label}
         </h4>

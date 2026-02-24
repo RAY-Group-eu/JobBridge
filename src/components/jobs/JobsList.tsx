@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { JobsListSection } from "@/components/jobs/JobsListSection";
 import { JobDetailModal } from "@/components/jobs/JobDetailModal";
@@ -8,11 +8,14 @@ import { Briefcase, CheckCircle2, Clock, ListFilter, MapPin } from "lucide-react
 import type { JobsListItem } from "@/lib/types/jobbridge";
 import { cn } from "@/lib/utils";
 import {
-    JobFilterSortPanel,
-    DEFAULT_FILTER_STATE,
+    sortJobs,
+    applyFilters,
+    isValidSortOption,
     DEFAULT_SORT_OPTION,
-    SORT_OPTIONS,
-} from "@/components/jobs/JobFilterSortPanel";
+    DEFAULT_FILTER_STATE,
+    SORT_META,
+} from "@/lib/jobs/sortFilter";
+import { JobFilterSortPanel } from "@/components/jobs/JobFilterSortPanel";
 import type { SortOption, FilterState } from "@/components/jobs/JobFilterSortPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,45 +32,52 @@ interface JobsListProps {
 
 type Tab = "active" | "waitlist" | "applied";
 
-// ─── Pure sort/filter helpers ─────────────────────────────────────────────────
+// ─── Persistence ──────────────────────────────────────────────────────────────
 
-function sortJobs(jobs: JobsListItem[], sort: SortOption): JobsListItem[] {
-    const arr = [...jobs];
-    switch (sort) {
-        case "distance":
-            return arr.sort((a, b) => {
-                if (a.distance_km == null && b.distance_km == null) return 0;
-                if (a.distance_km == null) return 1;
-                if (b.distance_km == null) return -1;
-                return a.distance_km - b.distance_km;
-            });
-        case "newest":
-            return arr.sort(
-                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-        case "wage_desc":
-            return arr.sort((a, b) => {
-                if (a.wage_hourly == null && b.wage_hourly == null) return 0;
-                if (a.wage_hourly == null) return 1;
-                if (b.wage_hourly == null) return -1;
-                return b.wage_hourly - a.wage_hourly;
-            });
-        default:
-            return arr;
+const STORAGE_KEY = "jb_filter_sort_v1";
+
+function loadPersistedState(): { sortOption: SortOption; filterState: FilterState } {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { sortOption: DEFAULT_SORT_OPTION, filterState: DEFAULT_FILTER_STATE };
+        const parsed = JSON.parse(raw) as { sortOption?: unknown; filterState?: Partial<FilterState> };
+        return {
+            sortOption: isValidSortOption(parsed.sortOption)
+                ? parsed.sortOption
+                : DEFAULT_SORT_OPTION,
+            filterState: {
+                categories: Array.isArray(parsed.filterState?.categories)
+                    ? parsed.filterState.categories.filter((c): c is string => typeof c === "string")
+                    : [],
+                maxDistanceKm:
+                    parsed.filterState?.maxDistanceKm === null ||
+                    typeof parsed.filterState?.maxDistanceKm === "number"
+                        ? parsed.filterState.maxDistanceKm ?? null
+                        : null,
+            },
+        };
+    } catch {
+        return { sortOption: DEFAULT_SORT_OPTION, filterState: DEFAULT_FILTER_STATE };
     }
 }
 
-function applyFilters(jobs: JobsListItem[], filters: FilterState): JobsListItem[] {
-    return jobs.filter((job) => {
-        if (filters.categories.length > 0 && !filters.categories.includes(job.category ?? "other")) {
-            return false;
-        }
-        if (filters.maxDistanceKm !== null) {
-            if (job.distance_km == null || job.distance_km > filters.maxDistanceKm) return false;
-        }
-        return true;
-    });
+// Debounce helper: delays writes to avoid hammering storage on rapid chip toggles
+function debounce<T extends unknown[]>(fn: (...args: T) => void, ms: number) {
+    let timer: ReturnType<typeof setTimeout>;
+    return (...args: T) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    };
 }
+
+const persistDebounced = debounce(
+    (sortOption: SortOption, filterState: FilterState) => {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ sortOption, filterState }));
+        } catch { /* storage unavailable */ }
+    },
+    400
+);
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 
@@ -96,20 +106,37 @@ export function JobsList({
     const [prevTab, setPrevTab] = useState<Tab>("active");
     const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-    // Sort & filter state
-    const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT_OPTION);
-    const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+    const [sortOption, setSortOptionRaw] = useState<SortOption>(DEFAULT_SORT_OPTION);
+    const [filterState, setFilterStateRaw] = useState<FilterState>(DEFAULT_FILTER_STATE);
 
-    // Derived booleans for UI
+    // Load persisted state after hydration
+    useEffect(() => {
+        const { sortOption: s, filterState: f } = loadPersistedState();
+        setSortOptionRaw(s);
+        setFilterStateRaw(f);
+    }, []);
+
+    // Persist whenever state changes (debounced to avoid hammering on rapid chip toggles)
+    useEffect(() => {
+        persistDebounced(sortOption, filterState);
+    }, [sortOption, filterState]);
+
+    // Wrap setters to keep a single update path
+    const setSortOption = useCallback((opt: SortOption) => setSortOptionRaw(opt), []);
+    const setFilterState: React.Dispatch<React.SetStateAction<FilterState>> = useCallback(
+        (update) => setFilterStateRaw(update),
+        []
+    );
+
+    // Derived UI state
     const activeFilterCount =
         (filterState.categories.length > 0 ? 1 : 0) +
         (filterState.maxDistanceKm !== null ? 1 : 0);
     const isNonDefaultSort = sortOption !== DEFAULT_SORT_OPTION;
     const hasChanges = activeFilterCount > 0 || isNonDefaultSort;
     const totalBadgeCount = activeFilterCount + (isNonDefaultSort ? 1 : 0);
-    const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortOption)?.label ?? "";
+    const currentSortLabel = SORT_META[sortOption].label;
 
-    // Compute slide direction based on tab order
     const slideDir = TAB_ORDER.indexOf(activeTab) > TAB_ORDER.indexOf(prevTab) ? 1 : -1;
 
     const handleTabChange = useCallback((tab: Tab) => {
@@ -125,10 +152,9 @@ export function JobsList({
     const handleReset = useCallback(() => {
         setSortOption(DEFAULT_SORT_OPTION);
         setFilterState(DEFAULT_FILTER_STATE);
-    }, []);
+    }, [setSortOption, setFilterState]);
 
-    // Filtered + sorted lists
-    // Active sections: sort AND filter apply
+    // Filtered + sorted lists (memoized)
     const filteredLocalJobs = useMemo(
         () => sortJobs(applyFilters(localActiveJobs, filterState), sortOption),
         [localActiveJobs, filterState, sortOption]
@@ -137,8 +163,6 @@ export function JobsList({
         () => sortJobs(applyFilters(extendedActiveJobs, filterState), sortOption),
         [extendedActiveJobs, filterState, sortOption]
     );
-
-    // Waitlist + applied: only sort applies (these are user-specific, no category filter needed)
     const sortedWaitlistedJobs = useMemo(
         () => sortJobs(waitlistedJobs, sortOption),
         [waitlistedJobs, sortOption]
@@ -149,6 +173,13 @@ export function JobsList({
     );
 
     const totalVisibleActiveJobs = filteredLocalJobs.length + filteredExtendedJobs.length;
+
+    const panelResultCount =
+        activeTab === "active"
+            ? totalVisibleActiveJobs
+            : activeTab === "waitlist"
+                ? sortedWaitlistedJobs.length
+                : sortedAppliedJobs.length;
 
     return (
         <>
@@ -164,7 +195,7 @@ export function JobsList({
                             <Briefcase size={14} />
                             Aktuell
                             {totalVisibleActiveJobs > 0 && (
-                                <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full font-bold">
                                     {totalVisibleActiveJobs}
                                 </span>
                             )}
@@ -177,7 +208,7 @@ export function JobsList({
                             <Clock size={14} />
                             Warteliste
                             {sortedWaitlistedJobs.length > 0 && (
-                                <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold">
                                     {sortedWaitlistedJobs.length}
                                 </span>
                             )}
@@ -190,7 +221,7 @@ export function JobsList({
                             <CheckCircle2 size={14} />
                             Beworben
                             {sortedAppliedJobs.length > 0 && (
-                                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">
                                     {sortedAppliedJobs.length}
                                 </span>
                             )}
@@ -199,7 +230,6 @@ export function JobsList({
 
                     <div className="w-px h-7 bg-white/10 mx-1 shrink-0" />
 
-                    {/* Filter button */}
                     <FilterButton
                         onClick={() => setShowFilterPanel(true)}
                         badgeCount={totalBadgeCount}
@@ -212,39 +242,23 @@ export function JobsList({
             {/* ── Desktop Tab Bar ──────────────────────────────────────── */}
             <div className="hidden md:flex items-center justify-between mb-8 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-1">
-                    <DesktopTab
-                        active={activeTab === "active"}
-                        onClick={() => handleTabChange("active")}
-                    >
+                    <DesktopTab active={activeTab === "active"} onClick={() => handleTabChange("active")}>
                         <Briefcase size={15} className={cn(activeTab === "active" ? "text-indigo-400" : "text-slate-500")} />
                         Aktuell
-                        {totalVisibleActiveJobs > 0 && (
-                            <TabBadge>{totalVisibleActiveJobs}</TabBadge>
-                        )}
+                        {totalVisibleActiveJobs > 0 && <TabBadge>{totalVisibleActiveJobs}</TabBadge>}
                     </DesktopTab>
-                    <DesktopTab
-                        active={activeTab === "waitlist"}
-                        onClick={() => handleTabChange("waitlist")}
-                    >
+                    <DesktopTab active={activeTab === "waitlist"} onClick={() => handleTabChange("waitlist")}>
                         <Clock size={15} className={cn(activeTab === "waitlist" ? "text-amber-400" : "text-slate-500")} />
                         Warteliste
-                        {sortedWaitlistedJobs.length > 0 && (
-                            <TabBadge>{sortedWaitlistedJobs.length}</TabBadge>
-                        )}
+                        {sortedWaitlistedJobs.length > 0 && <TabBadge>{sortedWaitlistedJobs.length}</TabBadge>}
                     </DesktopTab>
-                    <DesktopTab
-                        active={activeTab === "applied"}
-                        onClick={() => handleTabChange("applied")}
-                    >
+                    <DesktopTab active={activeTab === "applied"} onClick={() => handleTabChange("applied")}>
                         <CheckCircle2 size={15} className={cn(activeTab === "applied" ? "text-emerald-400" : "text-slate-500")} />
                         Beworben
-                        {sortedAppliedJobs.length > 0 && (
-                            <TabBadge>{sortedAppliedJobs.length}</TabBadge>
-                        )}
+                        {sortedAppliedJobs.length > 0 && <TabBadge>{sortedAppliedJobs.length}</TabBadge>}
                     </DesktopTab>
                 </div>
 
-                {/* Desktop filter button */}
                 <button
                     onClick={() => setShowFilterPanel(true)}
                     className={cn(
@@ -280,7 +294,6 @@ export function JobsList({
                             transition={{ type: "spring", stiffness: 380, damping: 32 }}
                             className="space-y-16"
                         >
-                            {/* Local Jobs */}
                             <JobsListSection
                                 title="Lokale Angebote"
                                 icon={Briefcase}
@@ -306,7 +319,6 @@ export function JobsList({
                                 onSelect={handleJobSelect}
                             />
 
-                            {/* Extended Jobs */}
                             {(filteredExtendedJobs.length > 0 || (hasChanges && extendedActiveJobs.length > 0)) && (
                                 <JobsListSection
                                     title="Überregionale Angebote"
@@ -393,13 +405,7 @@ export function JobsList({
                 onClose={() => setShowFilterPanel(false)}
                 onReset={handleReset}
                 hasChanges={hasChanges}
-                resultCount={
-                    activeTab === "active"
-                        ? totalVisibleActiveJobs
-                        : activeTab === "waitlist"
-                            ? sortedWaitlistedJobs.length
-                            : sortedAppliedJobs.length
-                }
+                resultCount={panelResultCount}
             />
         </>
     );
@@ -477,6 +483,7 @@ function FilterButton({
     return (
         <button
             onClick={onClick}
+            aria-label="Filter & Sortierung"
             className={cn(
                 "relative flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all shrink-0",
                 isActive && "text-indigo-400 bg-white/5",
@@ -493,7 +500,15 @@ function FilterButton({
     );
 }
 
-function EmptyState({ icon: Icon, title, message }: { icon: React.ElementType; title: string; message: string }) {
+function EmptyState({
+    icon: Icon,
+    title,
+    message,
+}: {
+    icon: React.ElementType;
+    title: string;
+    message: string;
+}) {
     return (
         <div className="flex flex-col items-center justify-center space-y-4 py-8 px-4">
             <div className="relative">
